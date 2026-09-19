@@ -1,9 +1,9 @@
 {
-  "extends": "@workspace/typescript-config/base.json",
+  "extends": "@dsc-hunt/typescript-config/base.json",
   "compilerOptions": {
     "lib": ["ES2022"],
     "paths": {
-      "@workspace/types/*": ["./src/*"]
+      "@dsc-hunt/types/*": ["./src/*"]
     },
     "rootDir": "./src",
     "types": ["node"]

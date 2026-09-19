@@ -14,8 +14,8 @@
     "ui:add": "node scripts/ui-add.mjs"
   },
   "devDependencies": {
-    "@workspace/eslint-config": "workspace:*",
-    "@workspace/typescript-config": "workspace:*",
+    "@dsc-hunt/eslint-config": "workspace:*",
+    "@dsc-hunt/typescript-config": "workspace:*",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "turbo": "^2.8.17",

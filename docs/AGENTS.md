@@ -32,18 +32,18 @@ Use **`pnpm exec turbo … --filter=<name>`** when you want faster feedback on o
 |------|------|
 | `apps/web` | Next.js App Router |
 | `apps/api` | Fastify API (ESM), `src/server.ts`, autoloaded `src/routes/` |
-| `packages/ui` | shadcn/ui-style **atoms**, Tailwind v4, `globals.css`, `@workspace/ui/...` exports |
+| `packages/ui` | shadcn/ui-style **atoms**, Tailwind v4, `globals.css`, `@dsc-hunt/ui/...` exports |
 | `packages/types` | Shared TS types for API/web contracts |
 | `packages/db` | DB client / migrations (extend as needed) |
 | `packages/eslint-config`, `packages/typescript-config` | Shared lint and TS configs |
 
-Imports use **`@workspace/*`** (see each package’s `package.json` `exports`).
+Imports use **`@dsc-hunt/*`** (see each package’s `package.json` `exports`).
 
 ---
 
 ## Frontend: shadcn + atom → module → organism
 
-- **Atoms:** `packages/ui/src/components/*` — add via shadcn CLI (see root `README.md`); import e.g. `@workspace/ui/components/button`.
+- **Atoms:** `packages/ui/src/components/*` — add via shadcn CLI (see root `README.md`); import e.g. `@dsc-hunt/ui/components/button`.
 - **Modules:** small composites → prefer `apps/web/components/modules/` (or `components/modules/<feature>/`).
 - **Organisms:** larger sections → `apps/web/components/organisms/` or colocate under `app/<route>/` when route-specific.
 

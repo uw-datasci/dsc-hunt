@@ -13,11 +13,11 @@ This document orients AI assistants and contributors to the repository layout, U
   - `packages/db` — database layer placeholder (extend for persistence).
   - `packages/eslint-config`, `packages/typescript-config` — shared lint and TS bases.
 
-Import shared packages with the `@workspace/*` scope (see each `package.json`).
+Import shared packages with the `@dsc-hunt/*` scope (see each `package.json`).
 
 ## Frontend: design system (shadcn + atom / module / organism)
 
-This repo uses **shadcn/ui** (Radix primitives + Tailwind, “radix-nova” style) with components living primarily in **`packages/ui`**. Apps consume them via exports such as `@workspace/ui/components/button`.
+This repo uses **shadcn/ui** (Radix primitives + Tailwind, “radix-nova” style) with components living primarily in **`packages/ui`**. Apps consume them via exports such as `@dsc-hunt/ui/components/button`.
 
 We organize UI in three conceptual layers (aligned with atomic design, with **modules** as the middle tier):
 
@@ -55,8 +55,8 @@ When adding a new feature, add a folder under `src/modules/<feature>/` with the 
 
 ## Shared contracts
 
-- Prefer **`@workspace/types`** for types shared between `apps/web` and `apps/api` when you formalize API payloads.
-- **`@workspace/db`** is the place for DB client setup and migrations as the data layer grows.
+- Prefer **`@dsc-hunt/types`** for types shared between `apps/web` and `apps/api` when you formalize API payloads.
+- **`@dsc-hunt/db`** is the place for DB client setup and migrations as the data layer grows.
 
 ---
 

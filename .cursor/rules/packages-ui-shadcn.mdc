@@ -4,7 +4,7 @@ globs: packages/ui/**
 alwaysApply: false
 ---
 
-# packages/ui (@workspace/ui)
+# packages/ui (@dsc-hunt/ui)
 
 - This package holds **design-system atoms** (shadcn/Radix + Tailwind). Keep components **presentational** when possible; push app-specific wiring to `apps/web`.
 - **Exports** are declared in `package.json` (`components/*`, `lib/*`, `globals.css`). Add new component files under `src/components/` and ensure export paths stay consistent.

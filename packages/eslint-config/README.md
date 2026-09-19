@@ -1,3 +1,3 @@
-# `@workspace/eslint-config`
+# `@dsc-hunt/eslint-config`
 
 Shared eslint configuration for the workspace.

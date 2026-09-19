@@ -13,10 +13,10 @@ importers:
         specifier: ^17.2.3
         version: 17.4.2
     devDependencies:
-      '@workspace/eslint-config':
+      '@dsc-hunt/eslint-config':
         specifier: workspace:*
         version: link:packages/eslint-config
-      '@workspace/typescript-config':
+      '@dsc-hunt/typescript-config':
         specifier: workspace:*
         version: link:packages/typescript-config
       prettier:
@@ -62,10 +62,10 @@ importers:
       '@types/node':
         specifier: ^25.1.0
         version: 25.9.1
-      '@workspace/eslint-config':
+      '@dsc-hunt/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
-      '@workspace/typescript-config':
+      '@dsc-hunt/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
       eslint:
@@ -86,7 +86,7 @@ importers:
       '@neondatabase/serverless':
         specifier: ^1.1.0
         version: 1.1.0
-      '@workspace/ui':
+      '@dsc-hunt/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       lucide-react:
@@ -117,10 +117,10 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.15)
-      '@workspace/eslint-config':
+      '@dsc-hunt/eslint-config':
         specifier: workspace:^
         version: link:../../packages/eslint-config
-      '@workspace/typescript-config':
+      '@dsc-hunt/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
       eslint:
@@ -135,10 +135,10 @@ importers:
       '@types/node':
         specifier: ^25.1.0
         version: 25.9.1
-      '@workspace/eslint-config':
+      '@dsc-hunt/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@workspace/typescript-config':
+      '@dsc-hunt/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       eslint:
@@ -195,10 +195,10 @@ importers:
       '@types/node':
         specifier: ^25.1.0
         version: 25.9.1
-      '@workspace/eslint-config':
+      '@dsc-hunt/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@workspace/typescript-config':
+      '@dsc-hunt/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       eslint:
@@ -261,10 +261,10 @@ importers:
       '@types/react-dom':
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.15)
-      '@workspace/eslint-config':
+      '@dsc-hunt/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@workspace/typescript-config':
+      '@dsc-hunt/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       eslint:

@@ -1,3 +1,3 @@
-# `@workspace/typescript-config`
+# `@dsc-hunt/typescript-config`
 
 Shared typescript configuration for the workspace.
