@@ -1,0 +1,12 @@
+---
+description: Shared UI package — shadcn atoms and exports
+globs: packages/ui/**
+alwaysApply: false
+---
+
+# packages/ui (@workspace/ui)
+
+- This package holds **design-system atoms** (shadcn/Radix + Tailwind). Keep components **presentational** when possible; push app-specific wiring to `apps/web`.
+- **Exports** are declared in `package.json` (`components/*`, `lib/*`, `globals.css`). Add new component files under `src/components/` and ensure export paths stay consistent.
+- **Theming:** `src/styles/globals.css` — Tailwind v4 `@source` includes app paths; changing sources or theme tokens may affect `apps/web`.
+- **CLI:** new shadcn pieces are added via the monorepo workflow in root `README.md` (typically `-c apps/web` targeting this package).

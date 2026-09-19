@@ -1,0 +1,15 @@
+name: api-service
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        NODE_VERSION: "24"
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "8000"

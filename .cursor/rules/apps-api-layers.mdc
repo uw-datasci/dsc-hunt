@@ -1,0 +1,15 @@
+---
+description: Fastify API route → controller → service → repository conventions
+globs: apps/api/**/*.ts
+alwaysApply: false
+---
+
+# apps/api layered architecture
+
+- **Routes** (`src/routes/*.ts`): register HTTP methods, attach Fastify `schema`, wire `new Repository()` → `new Service(repo)` → `new Controller(service)`.
+- **Controller** (`*.controller.ts`): only request/reply handling; call service methods; no business logic or DB.
+- **Service** (`*.service.ts`): use cases; coordinate repositories.
+- **Repository** (`*.repository.ts`): data and external I/O; return types from `*.types.ts`.
+- **Schema** (`*.schema.ts`): Fastify/OpenAPI response and request schemas for Swagger.
+
+New features: add `src/modules/<feature>/` with the suffixes above, then register routes under `src/routes/`. Plugins stay in `src/plugins/` (`index.ts` order matters).

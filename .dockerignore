@@ -1,0 +1,33 @@
+# Dependencies & caches
+node_modules
+**/node_modules
+.pnpm-store
+.turbo
+
+# Build outputs (built inside the image)
+**/dist
+**/.next
+**/out
+
+# Git & IDE
+.git
+.gitignore
+.cursor
+**/.DS_Store
+
+# Env & secrets (never bake into images)
+**/.env
+**/.env.*
+!.env.example
+
+# Apps not needed for the API image
+apps/web
+
+# Docs & misc
+*.md
+LICENSE
+
+# Local deploy / test artifacts
+deploy-prod-test
+deploy-test
+**/deploy-*

@@ -1,0 +1,12 @@
+---
+description: Monorepo layout, tooling, and where to find full agent docs
+alwaysApply: true
+---
+
+# Sample web API monorepo — quick context
+
+- **Package manager:** pnpm (see root `package.json` `packageManager`). **Orchestration:** Turborepo — use `pnpm dev`, `pnpm lint`, `pnpm typecheck`, `pnpm build` from the **repo root**.
+- **Apps:** `apps/web` (Next.js), `apps/api` (Fastify). **Shared UI:** `packages/ui` (`@workspace/ui/...`). **Shared types / DB stubs:** `packages/types`, `packages/db`.
+- **Longer narrative** (architecture, design system, CI hints): **`docs/AGENTS.md`** (root `AGENTS.md` links there). **GitHub Copilot parity:** `.github/copilot-instructions.md`.
+- **Targeted Turbo:** `pnpm exec turbo <task> --filter=web` or `--filter=api` (or `web...` / `api...` for dependents).
+- Prefer **minimal, task-scoped diffs**; match existing naming and file layout in the touched app or package.

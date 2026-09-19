@@ -1,0 +1,14 @@
+---
+description: shadcn atoms in packages/ui; modules and organisms in apps/web
+globs: apps/web/**
+alwaysApply: false
+---
+
+# Frontend design system (this monorepo)
+
+- **Atoms (shadcn):** live in `packages/ui/src/components/`. Import from `@workspace/ui/components/<name>` — do not duplicate primitives inside `apps/web` unless intentionally app-only.
+- **Modules:** small repeated compositions → `apps/web/components/modules/` (optionally `modules/<feature>/`).
+- **Organisms:** page sections / feature blocks → `apps/web/components/organisms/` or colocate under `app/<route>/`.
+- **Styling:** Tailwind + tokens in `packages/ui/src/styles/globals.css`; prefer `cn()` from `@workspace/ui/lib/utils` and CSS variables over one-off inline styles.
+
+Adding components: use the shadcn CLI as documented in root `README.md` so files land in `packages/ui`.

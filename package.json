@@ -1,0 +1,31 @@
+{
+  "name": "sample-web-api-monorepo",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "format": "turbo format",
+    "typecheck": "turbo typecheck",
+    "docker:api": "docker build -f docker/Dockerfile --build-arg NODE_VERSION=24 -t sample-api:latest .",
+    "docker:api:up": "docker compose -f docker/docker-compose.yml up --build api",
+    "pull-secrets": "node scripts/pull-secrets.js",
+    "ui:add": "node scripts/ui-add.mjs"
+  },
+  "devDependencies": {
+    "@workspace/eslint-config": "workspace:*",
+    "@workspace/typescript-config": "workspace:*",
+    "prettier": "^3.8.1",
+    "prettier-plugin-tailwindcss": "^0.7.2",
+    "turbo": "^2.8.17",
+    "typescript": "5.9.3"
+  },
+  "packageManager": "pnpm@11.3.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3"
+  }
+}
