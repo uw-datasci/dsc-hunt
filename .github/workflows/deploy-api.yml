@@ -42,9 +42,6 @@ jobs:
   build-docker:
     name: Build Docker Image
     needs: setup
-    permissions:
-      contents: read
-      packages: write
     uses: uw-datasci/nexus-workflows/.github/workflows/build-docker.yml@v4
     with:
       node-version: ${{ needs.setup.outputs.node-version }}
@@ -60,18 +57,7 @@ jobs:
   deploy-render:
     name: Deploy to Render
     needs: [setup, build-docker]
-    # Skipped until Foundry's render_setup creates the service and sets the secrets.
-    if: needs.setup.outputs.has-render-secret == 'true'
     runs-on: ubuntu-latest
     steps:
-      # Image-backed service: pass imageUrl, not commitId (Render 404s on commitId).
-      - name: Trigger Render deploy
-        env:
-          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        run: |
-          curl -sS --fail-with-body -X POST \
-            "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
-            -H "Authorization: Bearer ${RENDER_API_KEY}" \
-            -H "Content-Type: application/json" \
-            -d "{\"imageUrl\": \"ghcr.io/${GITHUB_REPOSITORY,,}:latest\"}"
+      - name: Trigger Render deploy hook
+        run: curl -fsSL -X POST "${{ secrets.DEPLOY_HOOK_URL }}"
