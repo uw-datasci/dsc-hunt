@@ -15,8 +15,8 @@ env:
   NODE_VERSION: 24
   PNPM_VERSION: 11.3.0
   INFISICAL_PROJECT_SLUG: uwdsc-54e-y
-  INFISICAL_WEB_PATH: <insert-path-here> # TODO: Update this value
-  INFISICAL_API_PATH: <insert-path-here> # TODO: Update this value
+  INFISICAL_WEB_PATH: /scavenger-hunt/web
+  INFISICAL_API_PATH: /scavenger-hunt/api
 
 jobs:
   setup:

@@ -18,6 +18,6 @@ function requireEnv(name: string): string {
 }
 
 export const serverConfig = {
-  // databaseUrl: requireEnv("DATABASE_URL"),
+  databaseUrl: requireEnv("DATABASE_URL"),
   // apiSecret: requireEnv("API_SECRET"),
 } as const;
