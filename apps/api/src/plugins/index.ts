@@ -2,11 +2,14 @@
  * Central Fastify plugin registration.
  *
  * Plugins are applied in a fixed order: environment validation first (so later
- * plugins can read `fastify.config`), then helmet, CORS, rate limiting, and
- * finally OpenAPI docs in non-production only.
+ * plugins can read `fastify.config`), then helmet, CORS, auth (decorates
+ * request.user / provides require* guards) - which must precede rate limiting
+ * so its keyGenerator can key on the authenticated user rather than IP -
+ * then rate limiting, and finally OpenAPI docs in non-production only.
  */
 import type { FastifyInstance } from "fastify"
 
+import { registerAuth } from "./auth"
 import { registerCors } from "./cors"
 import { registerEnv } from "./env"
 import { registerHelmet } from "./helmet"
@@ -17,6 +20,7 @@ export async function registerPlugins(fastify: FastifyInstance) {
   await registerEnv(fastify)
   await registerHelmet(fastify)
   await registerCors(fastify)
+  await registerAuth(fastify)
   await registerRateLimit(fastify)
   // Insert new plugins here
 

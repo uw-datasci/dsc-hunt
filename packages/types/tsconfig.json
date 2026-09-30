@@ -2,6 +2,9 @@
   "extends": "@dsc-hunt/typescript-config/base.json",
   "compilerOptions": {
     "lib": ["ES2022"],
+    // Consumed as TS source by Next (Turbopack) and tsup, so resolve like a bundler
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "paths": {
       "@dsc-hunt/types/*": ["./src/*"]
     },

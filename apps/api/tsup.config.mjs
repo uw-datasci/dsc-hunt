@@ -12,6 +12,8 @@ export default defineConfig({
   splitting: true,
   treeshake: true,
   outDir: "dist",
+  // Workspace packages ship TS source; bundle them instead of leaving bare imports
+  noExternal: [/^@dsc-hunt\//],
   dts: false,
   esbuildOptions(options) {
     options.legalComments = "none"

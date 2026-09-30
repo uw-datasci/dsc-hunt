@@ -1,20 +1,35 @@
-/**
- * Client-safe environment variables (exposed to the browser).
- *
- * Usage:
- * 1. Define variables in `.env` with the `NEXT_PUBLIC_` prefix. Only these are inlined into the client bundle at build time.
- * 2. Add a typed field below using `requireEnv`.
- * 3. Import `clientConfig` from Client Components and shared client code.
- *    Never put secrets here — anything in this file is visible in the browser.
- */
-
-function requireEnv(name: string): string {
-  const raw = process.env[name]?.trim();
-  if (!raw) throw new Error(`Missing required environment variable: ${name}`);
-
-  return raw;
+type ClientConfig = {
+  readonly apiUrl: string
+  readonly mainSiteUrl: string
 }
 
-export const clientConfig = {
-  // appUrl: requireEnv("NEXT_PUBLIC_APP_URL"),
-} as const;
+// Literal property access so Next.js can statically inline these into the
+// client bundle at build time. Dynamic `process.env[name]` access (e.g. via a
+// `requireEnv(name)` helper) is NOT inlined and resolves to `undefined` in the
+// browser.
+function readPublic(value: string | undefined, name: string): string {
+  const v = value?.trim()
+  if (!v) throw new Error(`Missing required environment variable: ${name}`)
+  return v
+}
+
+/**
+ * Public config (`NEXT_PUBLIC_*`). Safe in Client Components - use for API
+ * proxying and login redirects. Never put secrets here - anything in this
+ * file is visible in the browser. Supabase credentials live in
+ * `config/server.ts` (server-only).
+ *
+ * Values are read lazily so `next build` can load route modules without requiring
+ * every env var at import time (e.g. during "Collecting page data").
+ */
+export const clientConfig: ClientConfig = {
+  get apiUrl() {
+    return readPublic(process.env.NEXT_PUBLIC_API_URL, "NEXT_PUBLIC_API_URL")
+  },
+  get mainSiteUrl() {
+    return readPublic(
+      process.env.NEXT_PUBLIC_MAIN_SITE_URL,
+      "NEXT_PUBLIC_MAIN_SITE_URL"
+    )
+  },
+}
