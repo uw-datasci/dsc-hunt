@@ -6,9 +6,9 @@
  * only registered when `NODE_ENV !== "production"` so API docs are not exposed
  * in production by default.
  */
-import type { FastifyInstance } from "fastify"
-import swagger from "@fastify/swagger"
-import swaggerUi from "@fastify/swagger-ui"
+import type { FastifyInstance } from "fastify";
+import swagger from "@fastify/swagger";
+import swaggerUi from "@fastify/swagger-ui";
 
 export async function registerSwagger(fastify: FastifyInstance) {
   await fastify.register(swagger, {
@@ -18,7 +18,7 @@ export async function registerSwagger(fastify: FastifyInstance) {
         version: "1.0.0",
       },
     },
-  })
+  });
 
-  await fastify.register(swaggerUi, { routePrefix: "/docs" })
+  await fastify.register(swaggerUi, { routePrefix: "/docs" });
 }

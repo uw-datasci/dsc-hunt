@@ -1,8 +1,8 @@
-import "server-only"
+import "server-only";
 
-import { createServerClient, type CookieOptions } from "@supabase/ssr"
-import { cookies } from "next/headers"
-import { serverConfig } from "@/config/server"
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { serverConfig } from "@/config/server";
 
 /**
  * Supabase client for Server Components, Route Handlers, and Server Actions.
@@ -14,25 +14,21 @@ import { serverConfig } from "@/config/server"
  * the middleware (proxy.ts) is what actually refreshes tokens.
  */
 export async function createSupabaseServerClient() {
-  const cookieStore = await cookies()
-  return createServerClient(
-    serverConfig.supabaseUrl,
-    serverConfig.supabasePublishableKey,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            for (const { name, value, options } of cookiesToSet) {
-              cookieStore.set(name, value, options as CookieOptions)
-            }
-          } catch {
-            // Called from a Server Component - middleware refreshes instead.
-          }
-        },
+  const cookieStore = await cookies();
+  return createServerClient(serverConfig.supabaseUrl, serverConfig.supabasePublishableKey, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
       },
-    }
-  )
+      setAll(cookiesToSet) {
+        try {
+          for (const { name, value, options } of cookiesToSet) {
+            cookieStore.set(name, value, options as CookieOptions);
+          }
+        } catch {
+          // Called from a Server Component - middleware refreshes instead.
+        }
+      },
+    },
+  });
 }

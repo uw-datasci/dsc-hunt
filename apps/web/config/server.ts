@@ -1,20 +1,20 @@
-import "server-only"
+import "server-only";
 
 type ServerConfig = {
-  readonly databaseUrl: string
-  readonly supabaseUrl: string
-  readonly supabasePublishableKey: string
-}
+  readonly databaseUrl: string;
+  readonly supabaseUrl: string;
+  readonly supabasePublishableKey: string;
+};
 
 /**
  * Returns a trimmed, non-empty `process.env` value. Use in `config/client.ts`,
  * `config/server.ts`, or other config modules - not scattered across the app.
  */
 function requireEnv(name: string): string {
-  const raw = process.env[name]?.trim()
-  if (!raw) throw new Error(`Missing required environment variable: ${name}`)
+  const raw = process.env[name]?.trim();
+  if (!raw) throw new Error(`Missing required environment variable: ${name}`);
 
-  return raw
+  return raw;
 }
 
 /**
@@ -31,12 +31,12 @@ function requireEnv(name: string): string {
  */
 export const serverConfig: ServerConfig = {
   get databaseUrl() {
-    return requireEnv("DATABASE_URL")
+    return requireEnv("DATABASE_URL");
   },
   get supabaseUrl() {
-    return requireEnv("SUPABASE_URL")
+    return requireEnv("SUPABASE_URL");
   },
   get supabasePublishableKey() {
-    return requireEnv("SUPABASE_PUBLISHABLE_KEY")
+    return requireEnv("SUPABASE_PUBLISHABLE_KEY");
   },
-}
+};

@@ -1,6 +1,6 @@
-import type { FastifySchema } from "fastify"
+import type { FastifySchema } from "fastify";
 
-const nullableString = { type: ["string", "null"] }
+const nullableString = { type: ["string", "null"] };
 
 export const meSchema = {
   get: {
@@ -23,18 +23,11 @@ export const meSchema = {
               lastName: nullableString,
               watIam: nullableString,
             },
-            required: [
-              "id",
-              "email",
-              "role",
-              "firstName",
-              "lastName",
-              "watIam",
-            ],
+            required: ["id", "email", "role", "firstName", "lastName", "watIam"],
           },
         },
         required: ["user"],
       },
     },
   },
-} satisfies Record<string, FastifySchema>
+} satisfies Record<string, FastifySchema>;

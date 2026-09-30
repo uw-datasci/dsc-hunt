@@ -1,7 +1,7 @@
 export type HealthRecord = {
-  status: "ok"
-}
+  status: "ok";
+};
 
 export type WelcomeRecord = {
-  message: string
-}
+  message: string;
+};

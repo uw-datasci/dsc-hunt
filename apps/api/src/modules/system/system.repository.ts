@@ -1,11 +1,11 @@
-import type { HealthRecord, WelcomeRecord } from "./system.types"
+import type { HealthRecord, WelcomeRecord } from "./system.types";
 
 export class SystemRepository {
   getHealthRecord(): HealthRecord {
-    return { status: "ok" }
+    return { status: "ok" };
   }
 
   getWelcomeRecord(): WelcomeRecord {
-    return { message: "Fastify API is running" }
+    return { message: "Fastify API is running" };
   }
 }

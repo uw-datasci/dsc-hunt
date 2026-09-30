@@ -1,4 +1,4 @@
-import type { FastifySchema } from "fastify"
+import type { FastifySchema } from "fastify";
 
 export const systemSchema = {
   health: {
@@ -28,4 +28,4 @@ export const systemSchema = {
       },
     },
   },
-} satisfies Record<string, FastifySchema>
+} satisfies Record<string, FastifySchema>;
