@@ -1,4 +1,4 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import { Creepster, Geist, Geist_Mono } from "next/font/google";
 
 import "@dsc-hunt/ui/globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -14,6 +14,13 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 });
 
+// Spooky display face for headings (h1-h3 / `font-heading`).
+const fontDisplay = Creepster({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-display",
+});
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -23,7 +30,13 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", fontSans.variable)}
+      className={cn(
+        "antialiased",
+        fontMono.variable,
+        fontDisplay.variable,
+        "font-sans",
+        fontSans.variable
+      )}
     >
       <body>
         <ThemeProvider>{children}</ThemeProvider>

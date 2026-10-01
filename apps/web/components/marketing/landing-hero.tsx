@@ -18,7 +18,10 @@ export function LandingHero({ loginUrl, session }: Readonly<LandingHeroProps>) {
         <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase">
           UW Data Science Club
         </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">DSC Hunt</h1>
+        <h1 className="mt-3 text-5xl text-primary sm:text-6xl">DSC Hunt</h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Solve the riddles, haunt the campus, collect the candy. 🎃
+        </p>
 
         {session ? (
           <div className="mt-10 space-y-4">
@@ -27,8 +30,9 @@ export function LandingHero({ loginUrl, session }: Readonly<LandingHeroProps>) {
                 Signed in as {session.name}
               </p>
             ) : null}
+            {/* TODO: route by state - /team (no team), /waiting, /hunt, or /finished. */}
             <Button asChild className="w-full">
-              <Link href="/hunt">Enter the hunt</Link>
+              <Link href="/team">Enter the hunt</Link>
             </Button>
             {session.isStaff ? (
               <Button asChild variant="outline" className="w-full">

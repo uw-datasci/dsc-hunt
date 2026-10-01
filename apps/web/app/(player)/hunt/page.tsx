@@ -1,41 +1,65 @@
-import Link from "next/link";
-import { proxyApiJson } from "@/lib/api/proxy";
-import { getAuthenticatedUser } from "@/lib/auth/session";
-import type { AuthenticatedUser } from "@dsc-hunt/types";
+import { Badge } from "@dsc-hunt/ui/components/badge";
+import { Card, CardContent } from "@dsc-hunt/ui/components/card";
+import { cn } from "@dsc-hunt/ui/lib/utils";
+import { PageShell } from "@/components/shared/page-shell";
 
-/**
- * Placeholder player home. Shows the session as seen by the web app and by
- * the Fastify API (token forwarded via `proxyApiJson`) so the auth path can
- * be checked end-to-end until the real hunt UI lands.
- */
+export const dynamic = "force-dynamic";
+
+// TODO: replace with real data (the team's riddles + which ones they've scanned).
+const PLACEHOLDER_RIDDLES = [
+  {
+    id: "1",
+    text: "I hold a thousand stories but never speak. Find me where silence is kept.",
+    found: true,
+  },
+  {
+    id: "2",
+    text: "Where caffeine flows and deadlines grow, students gather row by row.",
+    found: true,
+  },
+  { id: "3", text: "I tick but have no clock, I tower over the quad.", found: false },
+  { id: "4", text: "Geese guard my waters; cross my bridge if you dare.", found: false },
+  { id: "5", text: "Riddle text placeholder.", found: false },
+];
+
 export default async function HuntPage() {
-  const [user, api] = await Promise.all([
-    getAuthenticatedUser(),
-    proxyApiJson<{ user: AuthenticatedUser }>("/me"),
-  ]);
+  // TODO: load the user's team + game status.
+  //   - no team        -> redirect("/team")
+  //   - not started    -> redirect("/waiting")
+  //   - game ended     -> redirect("/finished")
+  // TODO: refresh progress when a teammate scans a location (realtime).
+  const teamName = "The Pumpkin Patch";
+  const foundCount = PLACEHOLDER_RIDDLES.filter((riddle) => riddle.found).length;
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-lg flex-col justify-center gap-6 px-6 py-16">
-      <h1 className="text-2xl font-semibold tracking-tight">
-        Welcome{user?.firstName ? `, ${user.firstName}` : ""}
-      </h1>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-        <dt className="text-muted-foreground">Email</dt>
-        <dd>{user?.email ?? "-"}</dd>
-        <dt className="text-muted-foreground">WatIAM</dt>
-        <dd>{user?.watIam ?? "-"}</dd>
-        <dt className="text-muted-foreground">Role</dt>
-        <dd>{user?.role}</dd>
-        <dt className="text-muted-foreground">API</dt>
-        <dd>
-          {api.data
-            ? `Authenticated as ${api.data.user.email ?? api.data.user.id}`
-            : `${api.status || "Unreachable"} ${api.error ?? ""}`}
-        </dd>
-      </dl>
-      <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Back to home
-      </Link>
-    </main>
+    <PageShell
+      width="max-w-2xl"
+      eyebrow={teamName}
+      title="Your riddles"
+      description={`${foundCount} / ${PLACEHOLDER_RIDDLES.length} locations found`}
+    >
+      <ol className="grid gap-3">
+        {PLACEHOLDER_RIDDLES.map((riddle, index) => (
+          <li key={riddle.id}>
+            <Card size="sm" className={cn(riddle.found && "opacity-70")}>
+              <CardContent className="flex items-start gap-4">
+                <span className="font-heading text-2xl text-primary">{index + 1}</span>
+                <p className="flex-1 text-sm">{riddle.text}</p>
+                {riddle.found ? (
+                  <Badge className="bg-accent text-accent-foreground">Found</Badge>
+                ) : (
+                  <Badge variant="outline">Unfound</Badge>
+                )}
+              </CardContent>
+            </Card>
+          </li>
+        ))}
+      </ol>
+      <p className="text-center text-sm text-muted-foreground">
+        🎃 Solved one? Head there, grab your candy from the volunteer, and scan the QR code to
+        confirm your visit.
+      </p>
+      {/* TODO: optional in-app QR scanner button (camera) as an alternative to the phone camera. */}
+    </PageShell>
   );
 }
