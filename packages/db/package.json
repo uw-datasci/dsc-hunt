@@ -9,13 +9,16 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@types/node": "^25.1.0",
     "@dsc-hunt/eslint-config": "workspace:*",
     "@dsc-hunt/typescript-config": "workspace:*",
+    "@types/node": "^25.1.0",
     "eslint": "^9.39.2",
     "typescript": "^5.9.3"
   },
   "exports": {
     ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0"
   }
 }
