@@ -81,6 +81,36 @@ export default function LeaderboardPage() {
   const event = dummyEvent;
   const team = dummyTeam;
 
+  /*
+  // Realtime leaderboard stream
+  useEffect(() => {
+    if (!event?.id) return;
+
+    const source = new EventSource(
+      `${process.env.NEXT_PUBLIC_API_URL}/events/${encodeURIComponent(
+        event.id
+      )}/leaderboard/stream`
+    );
+
+    source.onmessage = (message) => {
+      const data = JSON.parse(message.data) as {
+        eventId: string;
+        data: LeaderboardEntry[];
+      };
+
+      setLeaderboard(data.data);
+    };
+
+    source.onerror = () => {
+      console.error("Leaderboard stream disconnected.");
+    };
+
+    return () => {
+      source.close();
+    };
+  }, [event?.id]);
+  */
+
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
       <div className="mb-8">
