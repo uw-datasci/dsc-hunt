@@ -30,26 +30,12 @@ CREATE TABLE locations (
   created_at     timestamptz NOT NULL DEFAULT now()
 );
 
--- One row per team/location records the team's progress at that checkpoint.
-CREATE TABLE team_progress (
-  team_id           uuid NOT NULL REFERENCES teams(team_id) ON DELETE CASCADE,
-  location_id       uuid NOT NULL REFERENCES locations(location_id) ON DELETE CASCADE,
-  first_visited_at  timestamptz NOT NULL,
-  last_visited_at   timestamptz NOT NULL,
-  points            integer NOT NULL DEFAULT 0,
-  PRIMARY KEY (team_id, location_id),
-  CHECK (last_visited_at >= first_visited_at)
-);
-
--- The visit-writing service updates progress and team totals transactionally.
 CREATE TABLE visits (
   visit_id     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  location_id  uuid NOT NULL,
-  team_id      uuid NOT NULL,
+  location_id  uuid NOT NULL REFERENCES locations(location_id) ON DELETE CASCADE,
+  team_id      uuid NOT NULL REFERENCES teams(team_id) ON DELETE CASCADE,
   points       integer NOT NULL DEFAULT 0,
-  visited_at   timestamptz NOT NULL DEFAULT now(),
-  FOREIGN KEY (team_id, location_id)
-    REFERENCES team_progress(team_id, location_id) ON DELETE CASCADE
+  visited_at   timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX visits_team_timeline_idx ON visits (team_id, visited_at, visit_id);
@@ -62,8 +48,8 @@ SELECT
   locations.name,
   riddles.riddle_text,
   locations.qr_identifier,
-  count(team_progress.team_id)::integer AS visited
+  count(DISTINCT visits.team_id)::integer AS visited
 FROM locations
 JOIN riddles ON riddles.riddle_id = locations.riddle_id
-LEFT JOIN team_progress ON team_progress.location_id = locations.location_id
+LEFT JOIN visits ON visits.location_id = locations.location_id
 GROUP BY locations.location_id, locations.name, riddles.riddle_text, locations.qr_identifier;

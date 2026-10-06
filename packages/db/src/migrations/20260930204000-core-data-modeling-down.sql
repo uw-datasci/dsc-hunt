@@ -1,6 +1,5 @@
 DROP VIEW IF EXISTS location_details;
 DROP TABLE IF EXISTS visits;
-DROP TABLE IF EXISTS team_progress;
 DROP TABLE IF EXISTS locations;
 DROP TABLE IF EXISTS team_members;
 DROP TABLE IF EXISTS teams;
