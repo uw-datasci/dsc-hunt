@@ -1,4 +1,4 @@
-import type { EditingPresence } from "@estimathon/types";
+import type { EditingPresence } from "@dsc-hunt/types";
 import type { EventHub } from "./event-hub";
 
 const TTL_MS = 15_000;
