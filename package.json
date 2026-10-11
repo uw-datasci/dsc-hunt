@@ -11,7 +11,11 @@
     "docker:api": "docker build -f docker/Dockerfile --build-arg NODE_VERSION=24 -t sample-api:latest .",
     "docker:api:up": "docker compose -f docker/docker-compose.yml up --build api",
     "pull-secrets": "node scripts/pull-secrets.js",
-    "ui:add": "node scripts/ui-add.mjs"
+    "ui:add": "node scripts/ui-add.mjs",
+    "migrate": "node scripts/migrate.js up",
+    "migrate:down": "node scripts/migrate.js down",
+    "migrate:check": "node scripts/migrate.js check",
+    "migrate:create": "node scripts/migrate.js create"
   },
   "devDependencies": {
     "@dsc-hunt/eslint-config": "workspace:*",

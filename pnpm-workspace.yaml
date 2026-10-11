@@ -3,6 +3,11 @@ packages:
   - "packages/*"
 injectWorkspacePackages: true
 allowBuilds:
+  cpu-features: false
   esbuild: true
   msw: false
   sharp: true
+  ssh2: false
+minimumReleaseAgeExclude:
+  - '@uw-datasci/raft@1.0.1'
+

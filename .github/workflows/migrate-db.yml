@@ -1,0 +1,51 @@
+name: Run Production Database Migrations
+
+on:
+  workflow_dispatch:
+    # Allows manual trigger from GitHub UI
+    inputs:
+      confirm:
+        description: "Type \"migrate\" to confirm running migrations"
+        required: true
+  push:
+    branches:
+      - main
+    paths:
+      - packages/db/src/migrations/**
+      - packages/db/database.json
+      - scripts/migrate.js
+
+env:
+  NODE_VERSION: 24
+  PNPM_VERSION: 12.8.1
+  INFISICAL_PROJECT_SLUG: uwdsc-54e-y
+
+jobs:
+  setup:
+    name: Setup
+    # Only run if manually confirmed or if changes are in main branch
+    if: github.event_name == 'push' || github.event.inputs.confirm == 'migrate'
+    runs-on: ubuntu-latest
+    outputs:
+      node-version: ${{ env.NODE_VERSION }}
+      pnpm-version: ${{ env.PNPM_VERSION }}
+      infisical-project-slug: ${{ env.INFISICAL_PROJECT_SLUG }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+  migrate:
+    name: Run Database Migrations
+    needs: setup
+    permissions:
+      contents: read
+      packages: read
+    uses: uw-datasci/nexus-workflows/.github/workflows/migrate-db.yml@v4
+    with:
+      node-version: ${{ needs.setup.outputs.node-version }}
+      pnpm-version: ${{ needs.setup.outputs.pnpm-version }}
+      infisical-project-slug: ${{ needs.setup.outputs.infisical-project-slug }}
+      infisical-secret-path: "/dsc-hunt/db"
+    secrets:
+      INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+      INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
