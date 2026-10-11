@@ -1,12 +1,15 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { MeService } from "./me.service";
 
 export class MeController {
-  constructor() {
+  constructor(private readonly service: MeService) {
     this.get = this.get.bind(this);
   }
 
-  get(request: FastifyRequest, reply: FastifyReply) {
+  async get(request: FastifyRequest, reply: FastifyReply) {
     // requireAuth preHandler guarantees request.user is set
-    return reply.send({ user: request.user! });
+    const user = request.user!;
+    const me = await this.service.get(user.id);
+    return reply.send({ ...me, user });
   }
 }
