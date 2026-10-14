@@ -5,7 +5,7 @@ import { PageShell } from "@/components/shared/page-shell";
 export const dynamic = "force-dynamic";
 
 export default async function FinishedPage() {
-  // TODO: if the game hasn't ended yet, redirect to /hunt or /waiting.
+  // TODO: if the game hasn't ended yet, redirect to /riddles or /team.
   // TODO: load the team's final result.
   const teamName = "The Pumpkin Patch";
   const foundCount = 0;

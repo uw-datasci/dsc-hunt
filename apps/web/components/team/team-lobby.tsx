@@ -8,13 +8,24 @@ import {
   CardTitle,
 } from "@dsc-hunt/ui/components/card";
 import type { PlaceholderTeam } from "@/components/team/placeholder-team";
+import { useEventStream } from "@/hooks/use-event-stream";
+import type { EventStatus } from "@/lib/event/types";
+
+const STATUS_HELPER: Partial<Record<EventStatus, string>> = {
+  not_started: "Hunt hasn't started yet",
+  ended: "Hunt has ended",
+};
 
 interface TeamLobbyProps {
   readonly team: PlaceholderTeam;
+  readonly initialStatus: EventStatus;
   readonly onLeave: () => void;
 }
 
-export function TeamLobby({ team, onLeave }: TeamLobbyProps) {
+export function TeamLobby({ team, initialStatus, onLeave }: TeamLobbyProps) {
+  const status = useEventStream(initialStatus);
+  const isLive = status === "live";
+
   return (
     <Card>
       <CardHeader>
@@ -38,11 +49,17 @@ export function TeamLobby({ team, onLeave }: TeamLobbyProps) {
           </ul>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {/* TODO: route to /hunt instead once the game is live. */}
-          <Button asChild className="flex-1">
-            <Link href="/waiting">Ready up</Link>
-          </Button>
+        <div className="grid gap-2">
+          {isLive ? (
+            <Button asChild>
+              <Link href="/riddles">Click here to see riddles</Link>
+            </Button>
+          ) : (
+            <Button disabled>Click here to see riddles</Button>
+          )}
+          {STATUS_HELPER[status] ? (
+            <p className="text-center text-sm text-muted-foreground">{STATUS_HELPER[status]}</p>
+          ) : null}
           {/* TODO: call the leave-team endpoint; decide what happens to an emptied team. */}
           <Button variant="outline" onClick={onLeave}>
             Leave team

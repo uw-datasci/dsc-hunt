@@ -30,7 +30,7 @@ export function LandingHero({ loginUrl, session }: Readonly<LandingHeroProps>) {
                 Signed in as {session.name}
               </p>
             ) : null}
-            {/* TODO: route by state - /team (no team), /waiting, /hunt, or /finished. */}
+            {/* TODO: route by state - /team, /riddles, or /finished. */}
             <Button asChild className="w-full">
               <Link href="/team">Enter the hunt</Link>
             </Button>

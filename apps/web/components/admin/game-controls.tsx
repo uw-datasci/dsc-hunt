@@ -40,19 +40,22 @@ export function GameControls({ initialStatus }: GameControlsProps) {
     setDialog("start");
   }
 
-  function confirmStart() {
-    // TODO: call the start-game endpoint (optionally with a scheduled start
-    // time), then router.refresh(). Players on /waiting should be pushed to
-    // /hunt via realtime.
-    setStatus("live");
+  async function changeStatus(next: GameStatus) {
+    const res = await fetch("/api/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: next }),
+    });
+    if (res.ok) setStatus(next);
     setDialog(null);
   }
 
+  function confirmStart() {
+    void changeStatus("live");
+  }
+
   function confirmEnd() {
-    // TODO: call the end-game endpoint, then router.refresh(). Players should
-    // be pushed to /finished and further scans rejected.
-    setStatus("ended");
-    setDialog(null);
+    void changeStatus("ended");
   }
 
   return (

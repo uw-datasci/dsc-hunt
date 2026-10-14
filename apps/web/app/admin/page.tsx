@@ -27,10 +27,11 @@ const SECTIONS = [
   },
 ];
 
+import { getEventStatus } from "@/lib/event/store";
+
 export default async function AdminHomePage() {
-  // TODO: load the current game status from the backend.
   return (
-    <AdminShell title="Dashboard" actions={<GameControls initialStatus="not_started" />}>
+    <AdminShell title="Dashboard" actions={<GameControls initialStatus={getEventStatus()} />}>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {PLACEHOLDER_STATS.map((stat) => (
           <StatTile key={stat.label} label={stat.label} value={stat.value} />

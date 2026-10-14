@@ -1,7 +1,10 @@
+import { redirect } from "next/navigation";
 import { Badge } from "@dsc-hunt/ui/components/badge";
 import { Card, CardContent } from "@dsc-hunt/ui/components/card";
 import { cn } from "@dsc-hunt/ui/lib/utils";
 import { PageShell } from "@/components/shared/page-shell";
+import { getEventStatus } from "@/lib/event/store";
+import { getCurrentTeam } from "@/lib/team/session";
 
 export const dynamic = "force-dynamic";
 
@@ -23,12 +26,11 @@ const PLACEHOLDER_RIDDLES = [
 ];
 
 export default async function HuntPage() {
-  // TODO: load the user's team + game status.
-  //   - no team        -> redirect("/team")
-  //   - not started    -> redirect("/waiting")
-  //   - game ended     -> redirect("/finished")
+  const team = await getCurrentTeam();
+  if (!team || getEventStatus() !== "live") redirect("/team");
+
   // TODO: refresh progress when a teammate scans a location (realtime).
-  const teamName = "The Pumpkin Patch";
+  const teamName = team.name;
   const foundCount = PLACEHOLDER_RIDDLES.filter((riddle) => riddle.found).length;
 
   return (
