@@ -10,7 +10,7 @@ This document orients AI assistants and contributors to the repository layout, U
   - `apps/api` — Fastify HTTP API (Node ESM), built with `tsup`; Docker assets under `docker/`.
   - `packages/ui` — shared **shadcn/ui**-style components, Tailwind v4 + `globals.css`, `cn()` utilities.
   - `packages/types` — shared TypeScript types (extend as cross-app contracts grow).
-  - `packages/db` — database layer placeholder (extend for persistence).
+  - `packages/db` — Neon Postgres pool + `query`/`queryOne` helpers (`@dsc-hunt/db`), and db-migrate migrations under `src/migrations`.
   - `packages/eslint-config`, `packages/typescript-config` — shared lint and TS bases.
 
 Import shared packages with the `@dsc-hunt/*` scope (see each `package.json`).
