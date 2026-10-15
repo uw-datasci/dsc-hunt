@@ -2,6 +2,8 @@ import Link from "next/link";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { GameControls } from "@/components/admin/game-controls";
 import { StatTile } from "@/components/shared/stat-tile";
+import { getAccessToken } from "@/lib/auth/session";
+import { getCurrentEvent } from "@/lib/event/current";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +29,22 @@ const SECTIONS = [
   },
 ];
 
-import { getEventStatus } from "@/lib/event/store";
-
 export default async function AdminHomePage() {
+  const [event, accessToken] = await Promise.all([getCurrentEvent(), getAccessToken()]);
+
   return (
-    <AdminShell title="Dashboard" actions={<GameControls initialStatus={getEventStatus()} />}>
+    <AdminShell
+      title="Dashboard"
+      actions={
+        event ? (
+          <GameControls event={event} accessToken={accessToken} />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No event found. Check the API is running and migrations have been applied.
+          </p>
+        )
+      }
+    >
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {PLACEHOLDER_STATS.map((stat) => (
           <StatTile key={stat.label} label={stat.label} value={stat.value} />

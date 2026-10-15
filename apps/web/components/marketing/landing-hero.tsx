@@ -1,10 +1,19 @@
 import Link from "next/link";
+import type { EventStatus } from "@dsc-hunt/types";
 import { Button } from "@dsc-hunt/ui/components/button";
 
 export interface LandingSession {
   name: string | null;
   isStaff: boolean;
+  eventStatus: EventStatus;
 }
+
+/** Where "Enter the hunt" goes for each status. /riddles bounces to /team when the player has no team. */
+const ENTRY_HREF: Record<EventStatus, string> = {
+  not_started: "/team",
+  live: "/riddles",
+  ended: "/finished",
+};
 
 interface LandingHeroProps {
   loginUrl: string;
@@ -30,9 +39,8 @@ export function LandingHero({ loginUrl, session }: Readonly<LandingHeroProps>) {
                 Signed in as {session.name}
               </p>
             ) : null}
-            {/* TODO: route by state - /team, /riddles, or /finished. */}
             <Button asChild className="w-full">
-              <Link href="/team">Enter the hunt</Link>
+              <Link href={ENTRY_HREF[session.eventStatus]}>Enter the hunt</Link>
             </Button>
             {session.isStaff ? (
               <Button asChild variant="outline" className="w-full">

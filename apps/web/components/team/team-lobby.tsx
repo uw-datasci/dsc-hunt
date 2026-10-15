@@ -7,9 +7,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@dsc-hunt/ui/components/card";
+import type { Event, EventStatus } from "@dsc-hunt/types";
 import type { PlaceholderTeam } from "@/components/team/placeholder-team";
 import { useEventStream } from "@/hooks/use-event-stream";
-import type { EventStatus } from "@/lib/event/types";
 
 const STATUS_HELPER: Partial<Record<EventStatus, string>> = {
   not_started: "Hunt hasn't started yet",
@@ -18,12 +18,18 @@ const STATUS_HELPER: Partial<Record<EventStatus, string>> = {
 
 interface TeamLobbyProps {
   readonly team: PlaceholderTeam;
-  readonly initialStatus: EventStatus;
+  readonly event: Event | null;
+  readonly accessToken: string | null;
   readonly onLeave: () => void;
 }
 
-export function TeamLobby({ team, initialStatus, onLeave }: TeamLobbyProps) {
-  const status = useEventStream(initialStatus);
+export function TeamLobby({ team, event, accessToken, onLeave }: TeamLobbyProps) {
+  const status =
+    useEventStream({
+      eventId: event?.id ?? null,
+      accessToken,
+      initialStatus: event?.status ?? "not_started",
+    }) ?? "not_started";
   const isLive = status === "live";
 
   return (

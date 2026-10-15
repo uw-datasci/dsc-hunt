@@ -2,8 +2,10 @@ import { redirect } from "next/navigation";
 import { Badge } from "@dsc-hunt/ui/components/badge";
 import { Card, CardContent } from "@dsc-hunt/ui/components/card";
 import { cn } from "@dsc-hunt/ui/lib/utils";
+import { EventStatusRedirect } from "@/components/event/event-status-redirect";
 import { PageShell } from "@/components/shared/page-shell";
-import { getEventStatus } from "@/lib/event/store";
+import { getAccessToken } from "@/lib/auth/session";
+import { getCurrentEvent } from "@/lib/event/current";
 import { getCurrentTeam } from "@/lib/team/session";
 
 export const dynamic = "force-dynamic";
@@ -26,8 +28,13 @@ const PLACEHOLDER_RIDDLES = [
 ];
 
 export default async function HuntPage() {
-  const team = await getCurrentTeam();
-  if (!team || getEventStatus() !== "live") redirect("/team");
+  const [team, event, accessToken] = await Promise.all([
+    getCurrentTeam(),
+    getCurrentEvent(),
+    getAccessToken(),
+  ]);
+  if (event?.status === "ended") redirect("/finished");
+  if (!team || event?.status !== "live") redirect("/team");
 
   // TODO: refresh progress when a teammate scans a location (realtime).
   const teamName = team.name;
@@ -40,6 +47,13 @@ export default async function HuntPage() {
       title="Your riddles"
       description={`${foundCount} / ${PLACEHOLDER_RIDDLES.length} locations found`}
     >
+      {/* Push players to the results screen the moment an admin ends the hunt. */}
+      <EventStatusRedirect
+        eventId={event.id}
+        accessToken={accessToken}
+        initialStatus={event.status}
+        redirects={{ ended: "/finished" }}
+      />
       <ol className="grid gap-3">
         {PLACEHOLDER_RIDDLES.map((riddle, index) => (
           <li key={riddle.id}>

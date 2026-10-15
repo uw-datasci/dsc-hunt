@@ -1,13 +1,17 @@
 import { PageShell } from "@/components/shared/page-shell";
 import { TeamSetup } from "@/components/team/team-setup";
-import { getEventStatus } from "@/lib/event/store";
+import { getAccessToken } from "@/lib/auth/session";
+import { getCurrentEvent } from "@/lib/event/current";
 import { getCurrentTeam } from "@/lib/team/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeamPage() {
-  const team = await getCurrentTeam();
-  const status = getEventStatus();
+  const [team, event, accessToken] = await Promise.all([
+    getCurrentTeam(),
+    getCurrentEvent(),
+    getAccessToken(),
+  ]);
 
   return (
     <PageShell
@@ -16,7 +20,7 @@ export default async function TeamPage() {
       title="Assemble your coven"
       description="Create a new team and share the code, or join one with a code a teammate gave you."
     >
-      <TeamSetup initialTeam={team} initialStatus={status} />
+      <TeamSetup initialTeam={team} event={event} accessToken={accessToken} />
     </PageShell>
   );
 }
