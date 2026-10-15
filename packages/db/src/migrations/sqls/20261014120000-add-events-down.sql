@@ -1,0 +1,3 @@
+DROP INDEX IF EXISTS teams_event_id_idx;
+ALTER TABLE teams DROP COLUMN IF EXISTS event_id;
+DROP TABLE IF EXISTS events;

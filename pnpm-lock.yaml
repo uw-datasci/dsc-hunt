@@ -192,6 +192,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@dsc-hunt/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@dsc-hunt/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -304,6 +307,10 @@ importers:
         version: 5.9.3
 
   packages/db:
+    dependencies:
+      '@neondatabase/serverless':
+        specifier: ^1.1.0
+        version: 1.1.0
     devDependencies:
       '@dsc-hunt/eslint-config':
         specifier: workspace:*
