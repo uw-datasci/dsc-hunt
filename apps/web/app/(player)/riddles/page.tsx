@@ -1,31 +1,15 @@
 import { redirect } from "next/navigation";
-import { Badge } from "@dsc-hunt/ui/components/badge";
-import { Card, CardContent } from "@dsc-hunt/ui/components/card";
-import { cn } from "@dsc-hunt/ui/lib/utils";
+import type { RiddlesResponse } from "@dsc-hunt/types";
 import { EventStatusRedirect } from "@/components/event/event-status-redirect";
 import { PageShell } from "@/components/shared/page-shell";
+import { serverConfig } from "@/config/server";
+import { proxyApiJson } from "@/lib/api/proxy";
 import { getAccessToken } from "@/lib/auth/session";
 import { getCurrentEvent } from "@/lib/event/current";
 import { getCurrentTeam } from "@/lib/team/session";
+import { RiddleBoard } from "./riddle-board";
 
 export const dynamic = "force-dynamic";
-
-// TODO: replace with real data (the team's riddles + which ones they've scanned).
-const PLACEHOLDER_RIDDLES = [
-  {
-    id: "1",
-    text: "I hold a thousand stories but never speak. Find me where silence is kept.",
-    found: true,
-  },
-  {
-    id: "2",
-    text: "Where caffeine flows and deadlines grow, students gather row by row.",
-    found: true,
-  },
-  { id: "3", text: "I tick but have no clock, I tower over the quad.", found: false },
-  { id: "4", text: "Geese guard my waters; cross my bridge if you dare.", found: false },
-  { id: "5", text: "Riddle text placeholder.", found: false },
-];
 
 export default async function HuntPage() {
   const [team, event, accessToken] = await Promise.all([
@@ -36,16 +20,16 @@ export default async function HuntPage() {
   if (event?.status === "ended") redirect("/finished");
   if (!team || event?.status !== "live") redirect("/team");
 
-  // TODO: refresh progress when a teammate scans a location (realtime).
-  const teamName = team.name;
-  const foundCount = PLACEHOLDER_RIDDLES.filter((riddle) => riddle.found).length;
+  const { data, error } = await proxyApiJson<RiddlesResponse>(
+    `/events/${encodeURIComponent(event.id)}/riddles`
+  );
 
   return (
     <PageShell
       width="max-w-2xl"
-      eyebrow={teamName}
+      eyebrow={team.name}
       title="Your riddles"
-      description={`${foundCount} / ${PLACEHOLDER_RIDDLES.length} locations found`}
+      description="Reveal one riddle at a time, then solve it to unlock its location."
     >
       {/* Push players to the results screen the moment an admin ends the hunt. */}
       <EventStatusRedirect
@@ -54,28 +38,17 @@ export default async function HuntPage() {
         initialStatus={event.status}
         redirects={{ ended: "/finished" }}
       />
-      <ol className="grid gap-3">
-        {PLACEHOLDER_RIDDLES.map((riddle, index) => (
-          <li key={riddle.id}>
-            <Card size="sm" className={cn(riddle.found && "opacity-70")}>
-              <CardContent className="flex items-start gap-4">
-                <span className="font-heading text-2xl text-primary">{index + 1}</span>
-                <p className="flex-1 text-sm">{riddle.text}</p>
-                {riddle.found ? (
-                  <Badge className="bg-accent text-accent-foreground">Found</Badge>
-                ) : (
-                  <Badge variant="outline">Unfound</Badge>
-                )}
-              </CardContent>
-            </Card>
-          </li>
-        ))}
-      </ol>
-      <p className="text-center text-sm text-muted-foreground">
-        🎃 Solved one? Head there, grab your candy from the volunteer, and scan the QR code to
-        confirm your visit.
-      </p>
-      {/* TODO: optional in-app QR scanner button (camera) as an alternative to the phone camera. */}
+      {data ? (
+        <RiddleBoard
+          initialProgress={data}
+          supabaseUrl={serverConfig.supabaseUrl}
+          supabasePublishableKey={serverConfig.supabasePublishableKey}
+        />
+      ) : (
+        <p role="alert" className="text-center text-sm text-destructive">
+          {error ?? "Unable to load riddles."}
+        </p>
+      )}
     </PageShell>
   );
 }
