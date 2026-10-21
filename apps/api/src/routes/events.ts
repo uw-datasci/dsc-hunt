@@ -4,21 +4,37 @@ import { EventsController } from "../modules/events/events.controller";
 import { EventsRepository } from "../modules/events/events.repository";
 import { eventsSchema } from "../modules/events/events.schema";
 import { EventsService } from "../modules/events/events.service";
+import {
+  RiddlesController,
+  type AnswerBody,
+  type CurrentRiddleParams,
+  type CurrentScanParams,
+  type EventParams,
+  type RiddleParams,
+  type ScanParams,
+} from "../modules/riddles/riddles.controller";
+import { RiddlesRepository } from "../modules/riddles/riddles.repository";
+import { riddlesSchema } from "../modules/riddles/riddles.schema";
+import { RiddlesService } from "../modules/riddles/riddles.service";
 
 const eventsRoutes: FastifyPluginAsync = async (fastify) => {
-  const repository = new EventsRepository();
-  const service = new EventsService(repository, fastify.eventHub);
+  const eventsRepository = new EventsRepository();
+  const service = new EventsService(eventsRepository, fastify.eventHub);
   const controller = new EventsController(service);
+  const riddles = new RiddlesController(
+    new RiddlesService(new RiddlesRepository(), eventsRepository)
+  );
+  const auth = fastify.requireAuth;
 
   // Any signed-in player can read status; it gates the home page and /riddles.
   fastify.get(
     "/events/current",
-    { schema: eventsSchema.getCurrent, preHandler: fastify.requireAuth },
+    { schema: eventsSchema.getCurrent, preHandler: auth },
     controller.getCurrent
   );
   fastify.get(
     "/events/:id",
-    { schema: eventsSchema.getById, preHandler: fastify.requireAuth },
+    { schema: eventsSchema.getById, preHandler: auth },
     controller.getById
   );
 
@@ -32,6 +48,48 @@ const eventsRoutes: FastifyPluginAsync = async (fastify) => {
     "/events/:id/end",
     { schema: eventsSchema.end, preHandler: fastify.requireAdmin },
     controller.end
+  );
+
+  // Team riddle progress. `current` routes resolve to the newest event.
+  fastify.get(
+    "/events/current/riddles",
+    { schema: riddlesSchema.getCurrent, preHandler: auth },
+    riddles.getCurrent
+  );
+  fastify.post<{ Params: CurrentRiddleParams }>(
+    "/events/current/riddles/:position/flip",
+    { schema: riddlesSchema.flipCurrent, preHandler: auth },
+    riddles.flipCurrent
+  );
+  fastify.post<{ Params: CurrentRiddleParams; Body: AnswerBody }>(
+    "/events/current/riddles/:position/answer",
+    { schema: riddlesSchema.answerCurrent, preHandler: auth },
+    riddles.answerCurrent
+  );
+  fastify.post<{ Params: CurrentScanParams }>(
+    "/events/current/scan/:code",
+    { schema: riddlesSchema.scanCurrent, preHandler: auth },
+    riddles.scanCurrent
+  );
+  fastify.get<{ Params: EventParams }>(
+    "/events/:id/riddles",
+    { schema: riddlesSchema.get, preHandler: auth },
+    riddles.get
+  );
+  fastify.post<{ Params: RiddleParams }>(
+    "/events/:id/riddles/:position/flip",
+    { schema: riddlesSchema.flip, preHandler: auth },
+    riddles.flip
+  );
+  fastify.post<{ Params: RiddleParams; Body: AnswerBody }>(
+    "/events/:id/riddles/:position/answer",
+    { schema: riddlesSchema.answer, preHandler: auth },
+    riddles.answer
+  );
+  fastify.post<{ Params: ScanParams }>(
+    "/events/:id/scan/:code",
+    { schema: riddlesSchema.scan, preHandler: auth },
+    riddles.scan
   );
 };
 
