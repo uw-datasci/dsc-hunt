@@ -1,30 +1,14 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { handle } from "../../lib/http";
 import type { RiddlesService } from "./riddles.service";
-
-export interface EventParams {
-  id: string;
-}
-
-export interface RiddleParams extends EventParams {
-  position: number;
-}
-
-export interface CurrentRiddleParams {
-  position: number;
-}
-
-export interface ScanParams extends EventParams {
-  code: string;
-}
-
-export interface CurrentScanParams {
-  code: string;
-}
-
-export interface AnswerBody {
-  answer: string;
-}
+import type {
+  AnswerBody,
+  CurrentRiddleParams,
+  CurrentScanParams,
+  EventParams,
+  RiddleParams,
+  ScanParams,
+} from "./riddles.types";
 
 export class RiddlesController {
   constructor(private readonly service: RiddlesService) {

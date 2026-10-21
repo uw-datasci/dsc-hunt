@@ -29,3 +29,27 @@ export interface LocationRow {
   name: string;
   position: number;
 }
+
+export interface EventParams {
+  id: string;
+}
+
+export interface RiddleParams extends EventParams {
+  position: number;
+}
+
+export interface CurrentRiddleParams {
+  position: number;
+}
+
+export interface ScanParams extends EventParams {
+  code: string;
+}
+
+export interface CurrentScanParams {
+  code: string;
+}
+
+export interface AnswerBody {
+  answer: string;
+}

@@ -4,16 +4,16 @@ import { EventsController } from "../modules/events/events.controller";
 import { EventsRepository } from "../modules/events/events.repository";
 import { eventsSchema } from "../modules/events/events.schema";
 import { EventsService } from "../modules/events/events.service";
-import {
-  RiddlesController,
-  type AnswerBody,
-  type CurrentRiddleParams,
-  type CurrentScanParams,
-  type EventParams,
-  type RiddleParams,
-  type ScanParams,
-} from "../modules/riddles/riddles.controller";
+import { RiddlesController } from "../modules/riddles/riddles.controller";
 import { RiddlesRepository } from "../modules/riddles/riddles.repository";
+import type {
+  AnswerBody,
+  CurrentRiddleParams,
+  CurrentScanParams,
+  EventParams,
+  RiddleParams,
+  ScanParams,
+} from "../modules/riddles/riddles.types";
 import { riddlesSchema } from "../modules/riddles/riddles.schema";
 import { RiddlesService } from "../modules/riddles/riddles.service";
 
