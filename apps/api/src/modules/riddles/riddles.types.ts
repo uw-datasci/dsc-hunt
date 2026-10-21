@@ -18,6 +18,12 @@ export interface TeamStateRow {
   riddle_6: RiddleStatus;
 }
 
+export interface AnswerAttemptRow {
+  active_riddle: number | null;
+  status: RiddleStatus;
+  cooling_down: boolean;
+}
+
 export interface LocationRow {
   location_id: string;
   name: string;

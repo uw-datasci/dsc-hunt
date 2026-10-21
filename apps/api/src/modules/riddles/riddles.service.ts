@@ -4,8 +4,6 @@ import type { EventsRepository } from "../events/events.repository";
 import type { RiddlesRepository } from "./riddles.repository";
 import type { ProgressRow, TeamStateRow } from "./riddles.types";
 
-const ANSWER_COOLDOWN_MS = 5_000;
-
 function getRiddleStatus(team: TeamStateRow, position: number): RiddleStatus {
   switch (position) {
     case 1:
@@ -26,7 +24,6 @@ function getRiddleStatus(team: TeamStateRow, position: number): RiddleStatus {
 }
 
 export class RiddlesService {
-  private readonly answerCooldowns = new Map<string, number>();
   private readonly teamLocks = new Map<string, Promise<void>>();
 
   constructor(
@@ -80,7 +77,15 @@ export class RiddlesService {
         throw new HttpError(409, "This riddle is no longer unvisited");
       }
 
-      this.enforceAnswerCooldown(teamId);
+      if (!(await this.repository.recordAnswerAttempt(teamId, eventId, position))) {
+        const attempt = await this.repository.findAnswerAttemptState(teamId, position);
+        const stillActive =
+          attempt?.active_riddle === position && attempt.status === "unvisited";
+        if (stillActive && attempt.cooling_down) {
+          throw new HttpError(429, "Please wait before trying another answer");
+        }
+        throw new HttpError(409, "This riddle is no longer active");
+      }
 
       const expectedAnswer = (await this.repository.findAnswer(eventId, position))?.trim();
       if (!expectedAnswer) throw new HttpError(409, "This riddle is not configured yet");
@@ -174,15 +179,6 @@ export class RiddlesService {
       })),
       activeRiddle: rows[0]?.active_riddle ?? null,
     };
-  }
-
-  private enforceAnswerCooldown(teamId: string): void {
-    const now = Date.now();
-    const allowedAt = this.answerCooldowns.get(teamId);
-    if (allowedAt !== undefined && now < allowedAt) {
-      throw new HttpError(429, "Please wait before trying another answer");
-    }
-    this.answerCooldowns.set(teamId, now + ANSWER_COOLDOWN_MS);
   }
 
   private scoreVisit(): number {

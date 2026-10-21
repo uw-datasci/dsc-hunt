@@ -1,5 +1,5 @@
 import { query, queryOne } from "@dsc-hunt/db";
-import type { LocationRow, ProgressRow, TeamStateRow } from "./riddles.types";
+import type { AnswerAttemptRow, LocationRow, ProgressRow, TeamStateRow } from "./riddles.types";
 
 /**
  * `CASE` over the six riddle columns, for the riddle at position `$n`. The
@@ -85,6 +85,48 @@ export class RiddlesRepository {
       [teamId, eventId, position]
     );
     return rows.length > 0;
+  }
+
+  /**
+   * Stamps an answer attempt on the active riddle, at most once every five
+   * seconds per team. Returns false if the team is cooling down or the riddle
+   * is no longer active.
+   */
+  async recordAnswerAttempt(
+    teamId: string,
+    eventId: string,
+    position: number
+  ): Promise<boolean> {
+    const rows = await query(
+      `UPDATE teams
+       SET last_answer_attempt_at = clock_timestamp()
+       WHERE team_id = $1
+         AND event_id = $2
+         AND active_riddle = $3
+         AND ${riddleColumnAt("$3")} = 'unvisited'
+         AND (
+           last_answer_attempt_at IS NULL
+           OR last_answer_attempt_at <= clock_timestamp() - interval '5 seconds'
+         )
+         AND ${EVENT_IS_LIVE}
+       RETURNING team_id`,
+      [teamId, eventId, position]
+    );
+    return rows.length > 0;
+  }
+
+  /** Explains why `recordAnswerAttempt` refused: a cooldown or a stale riddle. */
+  findAnswerAttemptState(teamId: string, position: number): Promise<AnswerAttemptRow | null> {
+    return queryOne<AnswerAttemptRow>(
+      `SELECT
+         active_riddle,
+         ${riddleColumnAt("$2")} AS status,
+         COALESCE(last_answer_attempt_at > clock_timestamp() - interval '5 seconds', false)
+           AS cooling_down
+       FROM teams
+       WHERE team_id = $1`,
+      [teamId, position]
+    );
   }
 
   async findAnswer(eventId: string, position: number): Promise<string | null> {
