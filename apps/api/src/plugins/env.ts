@@ -4,7 +4,9 @@
  * Loads variables from `.env.local` / `.env` (when present) and validates them against a JSON
  * schema. Exposes the result on `fastify.config` under the key `config`, so
  * routes and other plugins can read `NODE_ENV`, `PORT`, `HOST`, `CORS_ORIGIN`,
- * and the Supabase settings with defaults applied for missing values.
+ * `DATABASE_URL`, and the Supabase settings with defaults applied for missing
+ * values. `@dsc-hunt/db` reads `DATABASE_URL` from `process.env`, which the
+ * dotenv step here populates before the first query runs.
  */
 import type { FastifyInstance } from "fastify";
 import fastifyEnv from "@fastify/env";
@@ -18,6 +20,7 @@ const schema = {
     CORS_ORIGIN: { type: "string", default: "" },
     SUPABASE_URL: { type: "string", default: "" },
     SUPABASE_PUBLISHABLE_KEY: { type: "string", default: "" },
+    DATABASE_URL: { type: "string", default: "" },
   },
 } as const;
 

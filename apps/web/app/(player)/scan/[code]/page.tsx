@@ -39,7 +39,7 @@ export default async function ScanPage({
         </CardContent>
       </Card>
       <Button asChild size="lg">
-        <Link href="/hunt">Back to riddles</Link>
+        <Link href="/riddles">Back to riddles</Link>
       </Button>
     </PageShell>
   );

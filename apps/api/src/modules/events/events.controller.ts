@@ -1,0 +1,31 @@
+import type { FastifyReply, FastifyRequest } from "fastify";
+import { handle } from "../../lib/http";
+import type { EventsService } from "./events.service";
+
+export class EventsController {
+  constructor(private readonly service: EventsService) {
+    this.getCurrent = this.getCurrent.bind(this);
+    this.getById = this.getById.bind(this);
+    this.start = this.start.bind(this);
+    this.end = this.end.bind(this);
+  }
+
+  getCurrent(_request: FastifyRequest, reply: FastifyReply) {
+    return handle(reply, async () => ({ event: await this.service.getCurrent() }));
+  }
+
+  getById(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    return handle(reply, async () => ({ event: await this.service.getById(id) }));
+  }
+
+  start(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    return handle(reply, async () => ({ event: await this.service.start(id) }));
+  }
+
+  end(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    return handle(reply, async () => ({ event: await this.service.end(id) }));
+  }
+}
