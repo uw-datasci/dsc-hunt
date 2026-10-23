@@ -22,27 +22,43 @@ export function TeamSetup({ initialTeam, event, accessToken }: TeamSetupProps) {
   // TODO: drop local state and router.refresh() after create/join/leave once
   // the server page loads the real team.
   const [team, setTeam] = useState(initialTeam);
+  const [error, setError] = useState<string | null>(null);
 
-  function update(next: PlaceholderTeam | null) {
-    setTeam(next);
-    void (next ? saveCurrentTeam(next) : clearCurrentTeam());
+  async function update(next: PlaceholderTeam | null) {
+    setError(null);
+    try {
+      await (next ? saveCurrentTeam(next) : clearCurrentTeam());
+      setTeam(next);
+    } catch {
+      setError("Couldn't save your team. Please try again.");
+    }
   }
+
+  const errorMessage = error ? <p className="text-sm text-destructive">{error}</p> : null;
 
   if (team) {
     return (
-      <TeamLobby
-        team={team}
-        event={event}
-        accessToken={accessToken}
-        onLeave={() => update(null)}
-      />
+      <>
+        <TeamLobby
+          team={team}
+          event={event}
+          accessToken={accessToken}
+          onLeave={() => void update(null)}
+        />
+        {errorMessage}
+      </>
     );
   }
 
   return (
-    <TeamOnboarding
-      onCreate={(name) => update({ ...PLACEHOLDER_TEAM, name: name || PLACEHOLDER_TEAM.name })}
-      onJoin={(code) => update({ ...PLACEHOLDER_TEAM, code })}
-    />
+    <>
+      <TeamOnboarding
+        onCreate={(name) =>
+          void update({ ...PLACEHOLDER_TEAM, name: name || PLACEHOLDER_TEAM.name })
+        }
+        onJoin={(code) => void update({ ...PLACEHOLDER_TEAM, code })}
+      />
+      {errorMessage}
+    </>
   );
 }

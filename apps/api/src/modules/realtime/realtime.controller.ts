@@ -27,7 +27,6 @@ export class RealtimeController {
 
   async stream(request: FastifyRequest, reply: FastifyReply) {
     const { id: eventId } = request.params as { id: string };
-    if (!request.user) return reply.code(401).send({ error: "Unauthenticated" });
 
     const event = await this.events.findById(eventId);
     if (!event) return reply.code(404).send({ error: "Event not found" });

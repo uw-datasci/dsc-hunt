@@ -1,18 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { HttpError } from "../../lib/http-error";
+import { handle } from "../../lib/http";
 import type { EventsService } from "./events.service";
-
-async function handle<T>(reply: FastifyReply, fn: () => Promise<T>, okCode = 200) {
-  try {
-    const result = await fn();
-    return reply.code(okCode).send(result);
-  } catch (err) {
-    if (err instanceof HttpError) {
-      return reply.code(err.statusCode).send({ error: err.message });
-    }
-    throw err;
-  }
-}
 
 export class EventsController {
   constructor(private readonly service: EventsService) {
