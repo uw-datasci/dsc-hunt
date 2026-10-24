@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { LockKeyhole, QrCode } from "lucide-react";
 import { Badge } from "@dsc-hunt/ui/components/badge";
 import { Button } from "@dsc-hunt/ui/components/button";
 import { Card, CardContent } from "@dsc-hunt/ui/components/card";
@@ -13,6 +14,9 @@ import {
   type EventStatusMessage,
   type TeamProgressMessage,
 } from "@/hooks/use-event-stream";
+
+/** Matches the server's per-team answer cooldown. */
+const COOLDOWN_SECONDS = 5;
 
 interface RiddleBoardProps {
   initialProgress: RiddlesResponse;
@@ -30,6 +34,8 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
   const [progress, setProgress] = useState(initialProgress);
   const [answer, setAnswer] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [incorrect, setIncorrect] = useState<string | null>(null);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const connectedOnce = useRef(false);
 
@@ -86,6 +92,15 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
     onTeamProgress,
   });
 
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+    const timer = window.setTimeout(() => {
+      setCooldownSeconds((seconds) => seconds - 1);
+      if (cooldownSeconds === 1) setIncorrect(null);
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [cooldownSeconds]);
+
   async function post(position: number, action: "flip" | "answer") {
     setError(null);
     setSubmitting(true);
@@ -104,11 +119,23 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
       );
       const result = (await response.json()) as RiddlesResponse | ApiError;
       if (!response.ok) {
-        setError((result as ApiError).error ?? `Request failed (${response.status})`);
+        const message = (result as ApiError).error ?? `Request failed (${response.status})`;
+        // 400 = wrong answer, 429 = a teammate's wrong answer is still cooling down.
+        if (action === "answer" && (response.status === 400 || response.status === 429)) {
+          setAnswer("");
+          setIncorrect(response.status === 400 ? "Incorrect answer. Try again!" : message);
+          setCooldownSeconds(COOLDOWN_SECONDS);
+        } else {
+          setError(message);
+        }
         return;
       }
       setProgress(result as RiddlesResponse);
-      if (action === "answer") setAnswer("");
+      if (action === "answer") {
+        setAnswer("");
+        setIncorrect(null);
+        setCooldownSeconds(0);
+      }
     } catch {
       setError("Unable to reach the hunt server. Please try again.");
     } finally {
@@ -117,69 +144,126 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
   }
 
   function renderCard(riddle: RiddleCard, index: number) {
-    const isActive = progress.activeRiddle === riddle.position;
-    const canFlip = riddle.status === "unvisited" && progress.activeRiddle === null;
+    // The active riddle stays flipped from reveal until its QR code is scanned.
+    const isFlipped = progress.activeRiddle === riddle.position;
+    const isSolved = riddle.status === "solved";
+    const isVisited = riddle.status === "visited";
+    const isLocked = !isVisited && !isFlipped && progress.activeRiddle !== null;
+    const isCoolingDown = cooldownSeconds > 0;
 
     return (
-      <li key={riddle.position}>
-        <Card size="sm" className={cn(riddle.status === "visited" && "opacity-70")}>
-          <CardContent className="flex items-start gap-4">
-            <span className="font-heading text-2xl text-primary">{index + 1}</span>
-            <div className="grid flex-1 gap-3">
-              {riddle.text ? (
-                <p className="text-sm">{riddle.text}</p>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {isActive ? "Riddle text is not configured yet." : "This riddle is hidden."}
-                </p>
-              )}
-              {isActive ? (
-                <form
-                  className="flex gap-2"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void post(riddle.position, "answer");
-                  }}
-                >
-                  <Input
-                    value={answer}
-                    onChange={(event) => setAnswer(event.target.value)}
-                    placeholder="Your answer"
-                    aria-label={`Answer for riddle ${riddle.position}`}
-                    disabled={submitting}
-                  />
-                  <Button type="submit" disabled={submitting || !answer.trim()}>
-                    Submit
-                  </Button>
-                </form>
+      <li key={riddle.position} className="h-64 [perspective:1000px]">
+        <div
+          className={cn(
+            "relative h-full w-full transition-transform duration-700 [transform-style:preserve-3d] motion-reduce:transition-none",
+            isFlipped && "[transform:rotateY(180deg)]"
+          )}
+        >
+          {/* Face-down card */}
+          <button
+            type="button"
+            disabled={isVisited || isLocked || isFlipped || submitting}
+            onClick={() => void post(riddle.position, "flip")}
+            aria-label={
+              isVisited
+                ? `Riddle ${index + 1}, completed`
+                : isLocked
+                  ? `Riddle ${index + 1}, locked`
+                  : `Reveal riddle ${index + 1}`
+            }
+            className={cn(
+              "absolute inset-0 flex flex-col items-center justify-center rounded-xl border p-6 text-center [backface-visibility:hidden]",
+              isVisited && "border-emerald-500/30 bg-emerald-500/10 opacity-70",
+              isLocked && "cursor-not-allowed border-muted bg-muted/30 opacity-50",
+              !isVisited &&
+                !isLocked &&
+                !isFlipped &&
+                "cursor-pointer transition-colors hover:border-primary hover:bg-primary/5"
+            )}
+          >
+            {isVisited ? (
+              <>
+                <span className="font-heading text-3xl text-emerald-500">✓</span>
+                <span className="mt-3 font-semibold">Completed</span>
+              </>
+            ) : isLocked ? (
+              <>
+                <LockKeyhole className="mb-3 h-7 w-7 text-muted-foreground" />
+                <span className="font-heading text-3xl">{index + 1}</span>
+                <span className="mt-2 text-xs text-muted-foreground">Locked</span>
+              </>
+            ) : (
+              <>
+                <span className="font-heading text-5xl text-primary">{index + 1}</span>
+                <span className="mt-3 text-sm text-muted-foreground">Tap to reveal</span>
+              </>
+            )}
+          </button>
+
+          {/* Flipped card */}
+          <Card
+            size="sm"
+            aria-hidden={!isFlipped}
+            className="absolute inset-0 [transform:rotateY(180deg)] overflow-y-auto [backface-visibility:hidden]"
+          >
+            <CardContent className="flex h-full flex-col">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-xs font-semibold tracking-widest text-primary uppercase">
+                  Riddle {index + 1}
+                </span>
+                {isSolved ? (
+                  <Badge className="bg-accent text-accent-foreground">Solved</Badge>
+                ) : null}
+              </div>
+
+              {isSolved ? (
+                <div className="flex flex-1 flex-col items-center justify-center text-center">
+                  <QrCode className="mb-3 h-8 w-8 text-primary" />
+                  <p className="font-semibold">Solved!</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Go to the location and scan the QR code to unlock your next riddle.
+                  </p>
+                </div>
+              ) : isFlipped ? (
+                <>
+                  <p className="mb-4 flex-1 text-sm leading-relaxed">
+                    {riddle.text ?? (
+                      <span className="text-muted-foreground">
+                        Riddle text is not configured yet.
+                      </span>
+                    )}
+                  </p>
+                  <form
+                    className="grid gap-2"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void post(riddle.position, "answer");
+                    }}
+                  >
+                    <Input
+                      value={answer}
+                      onChange={(event) => setAnswer(event.target.value)}
+                      placeholder="Your answer"
+                      aria-label={`Answer for riddle ${index + 1}`}
+                      disabled={submitting || isCoolingDown}
+                    />
+                    {incorrect ? (
+                      <p role="alert" className="text-sm font-medium text-destructive">
+                        {incorrect}
+                      </p>
+                    ) : null}
+                    <Button
+                      type="submit"
+                      disabled={submitting || isCoolingDown || !answer.trim()}
+                    >
+                      {isCoolingDown ? `Wait ${cooldownSeconds}s` : "Submit"}
+                    </Button>
+                  </form>
+                </>
               ) : null}
-              {canFlip ? (
-                <Button
-                  className="w-fit"
-                  variant="outline"
-                  disabled={submitting}
-                  onClick={() => void post(riddle.position, "flip")}
-                >
-                  Reveal riddle
-                </Button>
-              ) : null}
-            </div>
-            <Badge
-              variant={riddle.status === "unvisited" ? "outline" : "default"}
-              className={
-                riddle.status === "visited" ? "bg-accent text-accent-foreground" : undefined
-              }
-            >
-              {riddle.status === "visited"
-                ? "Visited"
-                : riddle.status === "solved"
-                  ? "Solved"
-                  : isActive
-                    ? "Active"
-                    : "Unvisited"}
-            </Badge>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </li>
     );
   }
@@ -189,18 +273,19 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
   return (
     <>
       <p className="text-center text-sm text-muted-foreground">
-        {visitedCount} / {progress.riddles.length} locations found
+        {visitedCount} / {progress.riddles.length} locations completed
       </p>
       {error ? (
         <p role="alert" className="text-center text-sm text-destructive">
           {error}
         </p>
       ) : null}
-      <ol className="grid gap-3">
+      <ol className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {progress.riddles.map((riddle, index) => renderCard(riddle, index))}
       </ol>
       <p className="text-center text-sm text-muted-foreground">
-        Solve a riddle, head to its location, and scan the QR code to confirm your visit.
+        Solve a riddle, head to its location, and scan the QR code to confirm your visit. Your
+        next riddle unlocks after each scan.
       </p>
     </>
   );
