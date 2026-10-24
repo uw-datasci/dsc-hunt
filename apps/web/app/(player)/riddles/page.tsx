@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import type { RiddlesResponse } from "@dsc-hunt/types";
 import { EventStatusRedirect } from "@/components/event/event-status-redirect";
 import { PageShell } from "@/components/shared/page-shell";
-import { serverConfig } from "@/config/server";
 import { proxyApiJson } from "@/lib/api/proxy";
 import { getAccessToken } from "@/lib/auth/session";
 import { getCurrentEvent } from "@/lib/event/current";
@@ -31,23 +30,25 @@ export default async function HuntPage() {
       title="Your riddles"
       description="Reveal one riddle at a time, then solve it to unlock its location."
     >
-      {/* Push players to the results screen the moment an admin ends the hunt. */}
-      <EventStatusRedirect
-        eventId={event.id}
-        accessToken={accessToken}
-        initialStatus={event.status}
-        redirects={{ ended: "/finished" }}
-      />
+      {/* The board also sends players to /finished the moment an admin ends the hunt. */}
       {data ? (
         <RiddleBoard
           initialProgress={data}
-          supabaseUrl={serverConfig.supabaseUrl}
-          supabasePublishableKey={serverConfig.supabasePublishableKey}
+          accessToken={accessToken}
+          initialStatus={event.status}
         />
       ) : (
-        <p role="alert" className="text-center text-sm text-destructive">
-          {error ?? "Unable to load riddles."}
-        </p>
+        <>
+          <EventStatusRedirect
+            eventId={event.id}
+            accessToken={accessToken}
+            initialStatus={event.status}
+            redirects={{ ended: "/finished" }}
+          />
+          <p role="alert" className="text-center text-sm text-destructive">
+            {error ?? "Unable to load riddles."}
+          </p>
+        </>
       )}
     </PageShell>
   );

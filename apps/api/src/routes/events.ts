@@ -22,7 +22,7 @@ const eventsRoutes: FastifyPluginAsync = async (fastify) => {
   const service = new EventsService(eventsRepository, fastify.eventHub);
   const controller = new EventsController(service);
   const riddles = new RiddlesController(
-    new RiddlesService(new RiddlesRepository(), eventsRepository)
+    new RiddlesService(new RiddlesRepository(), eventsRepository, fastify.eventHub)
   );
   const auth = fastify.requireAuth;
 

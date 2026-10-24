@@ -1,6 +1,7 @@
 import type { RiddleStatus, RiddlesResponse, ScanResponse } from "@dsc-hunt/types";
 import { HttpError } from "../../lib/http-error";
 import type { EventsRepository } from "../events/events.repository";
+import type { EventHub } from "../realtime/event-hub";
 import type { RiddlesRepository } from "./riddles.repository";
 import type { ProgressRow, TeamStateRow } from "./riddles.types";
 
@@ -28,7 +29,8 @@ export class RiddlesService {
 
   constructor(
     private readonly repository: RiddlesRepository,
-    private readonly events: EventsRepository
+    private readonly events: EventsRepository,
+    private readonly hub: EventHub
   ) {}
 
   /** Id of the current hunt - the newest event, matching `GET /events/current`. */
@@ -57,7 +59,7 @@ export class RiddlesService {
           throw new HttpError(409, "A riddle is already active");
         throw new HttpError(409, "This riddle is no longer unvisited");
       }
-      return this.getProgressForTeam(eventId, teamId);
+      return this.publishProgress(await this.getProgressForTeam(eventId, teamId));
     });
   }
 
@@ -96,7 +98,7 @@ export class RiddlesService {
       if (!(await this.repository.markSolved(teamId, eventId, position))) {
         throw new HttpError(409, "This riddle is no longer active");
       }
-      return this.getProgressForTeam(eventId, teamId);
+      return this.publishProgress(await this.getProgressForTeam(eventId, teamId));
     });
   }
 
@@ -127,7 +129,7 @@ export class RiddlesService {
 
       return {
         locationName: location.name,
-        progress: await this.getProgressForTeam(eventId, teamId),
+        progress: this.publishProgress(await this.getProgressForTeam(eventId, teamId)),
       };
     });
   }
@@ -179,6 +181,18 @@ export class RiddlesService {
       })),
       activeRiddle: rows[0]?.active_riddle ?? null,
     };
+  }
+
+  /** Tells every teammate's open riddle board that the team's progress changed. */
+  private publishProgress(progress: RiddlesResponse): RiddlesResponse {
+    this.hub.publish(progress.eventId, {
+      type: "team_progress",
+      eventId: progress.eventId,
+      teamId: progress.teamId,
+      riddles: progress.riddles.map(({ position, status }) => ({ position, status })),
+      activeRiddle: progress.activeRiddle,
+    });
+    return progress;
   }
 
   private scoreVisit(): number {
