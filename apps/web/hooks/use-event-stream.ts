@@ -8,6 +8,7 @@ const INITIAL_BACKOFF_MS = 1_000;
 const MAX_BACKOFF_MS = 30_000;
 
 export type EventStatusMessage = ServerMessage & { type: "event_status" };
+export type TeamProgressMessage = ServerMessage & { type: "team_progress" };
 
 interface UseEventStreamOptions {
   /** Pass null to stay disconnected (e.g. no event yet). */
@@ -17,6 +18,9 @@ interface UseEventStreamOptions {
   /** Server-rendered status, shown until the connect-time snapshot arrives. */
   initialStatus?: EventStatus | null;
   onEventStatus?: (msg: EventStatusMessage) => void;
+  /** Only `team_progress` messages for this team reach `onTeamProgress`. */
+  teamId?: string | null;
+  onTeamProgress?: (msg: TeamProgressMessage) => void;
 }
 
 /**
@@ -38,15 +42,19 @@ export function useEventStream({
   accessToken,
   initialStatus = null,
   onEventStatus,
+  teamId = null,
+  onTeamProgress,
 }: UseEventStreamOptions): EventStatus | null {
   const [status, setStatus] = useState<EventStatus | null>(initialStatus);
 
   // Keep the latest callback without making it a dependency of the
   // connection effect - callers would otherwise reconnect on every render.
   const onEventStatusRef = useRef(onEventStatus);
+  const onTeamProgressRef = useRef(onTeamProgress);
   useEffect(() => {
     onEventStatusRef.current = onEventStatus;
-  }, [onEventStatus]);
+    onTeamProgressRef.current = onTeamProgress;
+  }, [onEventStatus, onTeamProgress]);
 
   useEffect(() => {
     if (!eventId || !accessToken) return;
@@ -75,9 +83,17 @@ export function useEventStream({
         } catch {
           return;
         }
-        if (msg.type === "event_status") {
-          setStatus(msg.status);
-          onEventStatusRef.current?.(msg);
+        switch (msg.type) {
+          case "event_status":
+            setStatus(msg.status);
+            onEventStatusRef.current?.(msg);
+            break;
+          case "team_progress":
+            // Progress for every team goes to the whole event; keep only ours.
+            if (teamId && msg.teamId === teamId) onTeamProgressRef.current?.(msg);
+            break;
+          default:
+            break;
         }
       };
 
@@ -97,7 +113,7 @@ export function useEventStream({
       if (retryTimer) clearTimeout(retryTimer);
       source?.close();
     };
-  }, [eventId, accessToken]);
+  }, [eventId, accessToken, teamId]);
 
   return status;
 }

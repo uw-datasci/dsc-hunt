@@ -1,55 +1,90 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@dsc-hunt/ui/components/badge";
 import { Button } from "@dsc-hunt/ui/components/button";
 import { Card, CardContent } from "@dsc-hunt/ui/components/card";
 import { Input } from "@dsc-hunt/ui/components/input";
 import { cn } from "@dsc-hunt/ui/lib/utils";
-import type { RiddleCard, RiddlesResponse, TeamProgressUpdate } from "@dsc-hunt/types";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import type { EventStatus, RiddleCard, RiddlesResponse } from "@dsc-hunt/types";
+import {
+  useEventStream,
+  type EventStatusMessage,
+  type TeamProgressMessage,
+} from "@/hooks/use-event-stream";
 
 interface RiddleBoardProps {
   initialProgress: RiddlesResponse;
-  supabaseUrl: string;
-  supabasePublishableKey: string;
+  /** Supabase access token for the event stream. */
+  accessToken: string | null;
+  initialStatus: EventStatus;
 }
 
 interface ApiError {
   error?: string;
 }
 
-export function RiddleBoard({
-  initialProgress,
-  supabaseUrl,
-  supabasePublishableKey,
-}: RiddleBoardProps) {
+export function RiddleBoard({ initialProgress, accessToken, initialStatus }: RiddleBoardProps) {
+  const router = useRouter();
   const [progress, setProgress] = useState(initialProgress);
   const [answer, setAnswer] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const connectedOnce = useRef(false);
 
-  useEffect(() => {
-    const supabase = createSupabaseBrowserClient(supabaseUrl, supabasePublishableKey);
-    const channel = supabase
-      .channel(`team:${initialProgress.teamId}`, { config: { private: true } })
-      .on("broadcast", { event: "team_progress" }, ({ payload }) => {
-        const update = payload as TeamProgressUpdate;
-        if (update.type !== "team_progress" || update.teamId !== initialProgress.teamId) return;
-        setProgress((current) => ({ ...current, ...update }));
-        setAnswer("");
-      })
-      .subscribe((status, subscriptionError) => {
-        if (status === "SUBSCRIBED") {
-          setError(null);
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          setError(subscriptionError?.message ?? "Live sync disconnected. Reconnecting...");
-        }
-      });
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [initialProgress.teamId, supabasePublishableKey, supabaseUrl]);
+  const refetch = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `/api/events/${encodeURIComponent(initialProgress.eventId)}/riddles`
+      );
+      if (response.ok) setProgress((await response.json()) as RiddlesResponse);
+    } catch {
+      // The next stream message or reconnect will try again.
+    }
+  }, [initialProgress.eventId]);
+
+  // A teammate flipped, solved or scanned. Messages leave out riddle text, so
+  // keep the text we have and fetch it if a newly revealed card needs it.
+  const onTeamProgress = useCallback(
+    (msg: TeamProgressMessage) => {
+      const riddles = msg.riddles.map(({ position, status }) => ({
+        position,
+        status,
+        text: progress.riddles.find((r) => r.position === position)?.text ?? null,
+      }));
+      setProgress({ ...progress, riddles, activeRiddle: msg.activeRiddle });
+      setAnswer("");
+      const missingText = riddles.some(
+        (r) => !r.text && (r.status !== "unvisited" || msg.activeRiddle === r.position)
+      );
+      if (missingText) void refetch();
+    },
+    [progress, refetch]
+  );
+
+  // The server sends a status snapshot on every (re)connect. Refetch then so
+  // anything missed while offline shows up. Also covers the hunt ending.
+  const onEventStatus = useCallback(
+    (msg: EventStatusMessage) => {
+      if (msg.status === "ended") {
+        router.replace("/finished");
+        return;
+      }
+      if (connectedOnce.current) void refetch();
+      connectedOnce.current = true;
+    },
+    [refetch, router]
+  );
+
+  useEventStream({
+    eventId: initialProgress.eventId,
+    accessToken,
+    initialStatus,
+    onEventStatus,
+    teamId: initialProgress.teamId,
+    onTeamProgress,
+  });
 
   async function post(position: number, action: "flip" | "answer") {
     setError(null);

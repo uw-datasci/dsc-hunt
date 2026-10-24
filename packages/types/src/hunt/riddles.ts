@@ -13,13 +13,6 @@ export interface RiddlesResponse {
   activeRiddle: number | null;
 }
 
-export interface TeamProgressUpdate {
-  type: "team_progress";
-  teamId: string;
-  riddles: RiddleCard[];
-  activeRiddle: number | null;
-}
-
 export interface ScanResponse {
   locationName: string;
   progress: RiddlesResponse;
