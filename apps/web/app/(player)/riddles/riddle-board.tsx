@@ -61,6 +61,11 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
       }));
       setProgress({ ...progress, riddles, activeRiddle: msg.activeRiddle });
       setAnswer("");
+      // A teammate solved or scanned: drop any cooldown left from the old riddle.
+      if (msg.activeRiddle !== progress.activeRiddle) {
+        setIncorrect(null);
+        setCooldownSeconds(0);
+      }
       const missingText = riddles.some(
         (r) => !r.text && (r.status !== "unvisited" || msg.activeRiddle === r.position)
       );
@@ -127,6 +132,8 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
           setCooldownSeconds(COOLDOWN_SECONDS);
         } else {
           setError(message);
+          // 409 = a teammate changed the board first, so catch up with the server.
+          if (response.status === 409) void refetch();
         }
         return;
       }
