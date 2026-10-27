@@ -11,5 +11,7 @@ export interface Event {
   startedAt: string | null;
   /** Set when an admin ends the hunt; null before that. */
   endedAt: string | null;
+  /** Most players a team can have. */
+  teamSizeCap: number;
   createdAt: string;
 }

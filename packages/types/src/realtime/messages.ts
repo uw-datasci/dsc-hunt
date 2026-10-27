@@ -1,4 +1,5 @@
 import type { EventStatus } from "../event/events";
+import type { TeamMember } from "../event/teams";
 import type { RiddleCard } from "../hunt/riddles";
 
 /** Messages pushed to clients over the `GET /events/:id/stream` SSE channel. */
@@ -22,4 +23,18 @@ export type ServerMessage =
       teamId: string;
       totalScore: number;
       lastScoredAt: string;
+    }
+  | {
+      /** A player joined or left this team. Clients must ignore other teams' messages. */
+      type: "team_members";
+      eventId: string;
+      teamId: string;
+      members: TeamMember[];
+    }
+  | {
+      /** Live registration counters, sent after every roster change. */
+      type: "event_stats";
+      eventId: string;
+      teamCount: number;
+      playerCount: number;
     };

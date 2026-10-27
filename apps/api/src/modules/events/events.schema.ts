@@ -11,9 +11,10 @@ const eventObject = {
     status: { type: "string", enum: [...EVENT_STATUSES] },
     startedAt: nullableString,
     endedAt: nullableString,
+    teamSizeCap: { type: "integer" },
     createdAt: { type: "string" },
   },
-  required: ["id", "name", "status", "startedAt", "endedAt", "createdAt"],
+  required: ["id", "name", "status", "startedAt", "endedAt", "teamSizeCap", "createdAt"],
 } as const;
 
 const eventEnvelope = {

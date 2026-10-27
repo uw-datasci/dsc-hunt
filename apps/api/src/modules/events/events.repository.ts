@@ -10,6 +10,7 @@ export class EventsRepository {
       status: row.status,
       startedAt: row.started_at,
       endedAt: row.ended_at,
+      teamSizeCap: row.team_size_cap,
       createdAt: row.created_at,
     };
   }
