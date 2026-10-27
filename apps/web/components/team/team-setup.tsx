@@ -9,7 +9,6 @@ import { clearCurrentTeam, saveCurrentTeam } from "@/lib/team/session";
 
 interface TeamSetupProps {
   readonly initialTeam: PlaceholderTeam | null;
-  /** Current hunt; null when none exists yet or the API is unreachable. */
   readonly event: Event | null;
   readonly accessToken: string | null;
 }
