@@ -2,7 +2,6 @@ import autoLoad from "@fastify/autoload";
 import Fastify from "fastify";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-
 import { registerPlugins } from "./plugins";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
