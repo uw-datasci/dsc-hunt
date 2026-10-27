@@ -15,4 +15,11 @@ export type ServerMessage =
       teamId: string;
       riddles: Pick<RiddleCard, "position" | "status">[];
       activeRiddle: number | null;
+    }
+  | {
+      type: "score_update";
+      eventId: string;
+      teamId: string;
+      totalScore: number;
+      lastScoredAt: string;
     };

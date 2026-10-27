@@ -2,6 +2,11 @@ export { pool } from "./postgres";
 
 import { pool } from "./postgres";
 
+export interface DatabaseTransaction {
+  query<T>(text: string, params?: ReadonlyArray<unknown>): Promise<T[]>;
+  afterCommit(callback: () => void): void;
+}
+
 /**
  * Run a parameterized query and return the rows. Use positional `$1`, `$2`
  * placeholders - never interpolate values into the query string.
@@ -20,4 +25,48 @@ export async function queryOne<T>(
 ): Promise<T | null> {
   const rows = await query<T>(text, params);
   return rows[0] ?? null;
+}
+
+/**
+ * Run work in a database transaction and invoke registered callbacks only
+ * after the transaction has committed successfully.
+ */
+export async function withTransaction<T>(
+  callback: (transaction: DatabaseTransaction) => Promise<T>
+): Promise<T> {
+  const client = await pool.connect();
+  const afterCommit: Array<() => void> = [];
+  const transaction: DatabaseTransaction = {
+    async query<T>(text: string, params?: ReadonlyArray<unknown>): Promise<T[]> {
+      const result = await client.query(text, params as unknown[]);
+      return result.rows as T[];
+    },
+    afterCommit(callback) {
+      afterCommit.push(callback);
+    },
+  };
+  let committed = false;
+
+  try {
+    await client.query("BEGIN");
+    const result = await callback(transaction);
+    await client.query("COMMIT");
+    committed = true;
+    for (const publish of afterCommit) publish();
+    return result;
+  } catch (error) {
+    if (!committed) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (rollbackError) {
+        throw new AggregateError(
+          [error, rollbackError],
+          "Transaction failed and rollback also failed"
+        );
+      }
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
 }
