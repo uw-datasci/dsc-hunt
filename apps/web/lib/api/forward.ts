@@ -1,21 +1,24 @@
 import "server-only";
 
-import { RaftResponse } from "@uw-datasci/raft";
+import { RaftClient, RaftResponse } from "@uw-datasci/raft";
 import type { NextResponse } from "next/server";
-import { proxyApi } from "./proxy";
+import { API_TIMEOUT_MS, isTimeoutError, proxyApi } from "./proxy";
 
 interface ForwardOptions {
   /** Body to send when the incoming request has none (Fastify rejects an empty JSON body). */
   emptyBody?: string;
   /** Extra fetch options for the upstream call, e.g. `cache: "no-store"`. */
-  init?: Omit<RequestInit, "method" | "body" | "headers">;
+  init?: Omit<RequestInit, "method" | "body" | "headers" | "signal">;
+  /** Upstream timeout. Defaults to `API_TIMEOUT_MS`; raise it for slow calls like uploads. */
+  timeoutMs?: number;
 }
 
 /**
  * Forwards an incoming request to the Fastify API at `path`, keeping the
  * method, query string and body (read as bytes, so multipart uploads pass
  * through intact). The Supabase access token is attached by `proxyApi`.
- * Returns the upstream status and body unchanged.
+ * Returns the upstream status and body unchanged, or a 504 when the API
+ * doesn't answer in time.
  */
 export async function forward(
   request: Request,
@@ -37,12 +40,31 @@ export async function forward(
     }
   }
 
-  const upstream = await proxyApi(path + url.search, {
-    ...options.init,
-    method: request.method,
-    headers,
-    body,
-  });
+  let upstream: Response;
+  try {
+    upstream = await proxyApi(path + url.search, {
+      ...options.init,
+      method: request.method,
+      headers,
+      body,
+      signal: AbortSignal.timeout(options.timeoutMs ?? API_TIMEOUT_MS),
+    });
+  } catch (e) {
+    // Other fetch failures are real faults: let withRaft quarantine them as a 500.
+    if (!isTimeoutError(e)) throw e;
+    await RaftClient.getInstance().reportError(
+      new Error("API request timed out"),
+      { route: url.pathname, method: request.method },
+      "warning"
+    );
+    return RaftResponse.json(
+      {
+        error: "The hunt server took too long to respond",
+        message: "API request timed out",
+      },
+      504
+    );
+  }
 
   return RaftResponse.text(
     await upstream.text(),

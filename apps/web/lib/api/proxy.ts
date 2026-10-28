@@ -3,20 +3,36 @@ import "server-only";
 import { clientConfig } from "@/config/client";
 import { getAccessToken } from "@/lib/auth/session";
 
+/**
+ * How long to wait for the API before giving up. Keeps a stuck upstream from
+ * holding the request (and the player's screen) open until Vercel kills it.
+ */
+export const API_TIMEOUT_MS = 10_000;
+
 interface ProxyOptions extends Omit<RequestInit, "headers"> {
   headers?: Record<string, string>;
+}
+
+/** True for the error `fetch` throws when its `AbortSignal.timeout` fires. */
+export function isTimeoutError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "TimeoutError";
 }
 
 /**
  * Forwards a request to the Fastify API with the current Supabase access
  * token attached as a Bearer header. Returns the raw upstream Response
- * so the caller can stream it, copy headers, etc.
+ * so the caller can stream it, copy headers, etc. Times out after
+ * `API_TIMEOUT_MS` unless the caller passes its own `signal`.
  */
 export async function proxyApi(path: string, options: ProxyOptions = {}): Promise<Response> {
   const token = await getAccessToken();
   const headers: Record<string, string> = { ...options.headers };
   if (token) headers.Authorization = `Bearer ${token}`;
-  return fetch(`${clientConfig.apiUrl}${path}`, { ...options, headers });
+  return fetch(`${clientConfig.apiUrl}${path}`, {
+    ...options,
+    headers,
+    signal: options.signal ?? AbortSignal.timeout(API_TIMEOUT_MS),
+  });
 }
 
 /**

@@ -14,6 +14,7 @@
 const TTL_MS = 5 * 60 * 1000;
 const NEGATIVE_TTL_MS = 30 * 1000;
 const SWEEP_INTERVAL_MS = 60 * 1000;
+const FETCH_TIMEOUT_MS = 3_000;
 
 export interface ProfileFields {
   firstName: string | null;
@@ -78,6 +79,7 @@ export class ProfileCache {
           Authorization: `Bearer ${token}`,
           Accept: "application/vnd.pgrst.object+json",
         },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
 
       // 406 = PGRST116 (no row matched .single()); a real "no profile yet".

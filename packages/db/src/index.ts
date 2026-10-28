@@ -2,6 +2,13 @@ export { pool } from "./postgres";
 
 import { pool } from "./postgres";
 
+/**
+ * Longest any statement in a transaction may run, including waiting on a row
+ * lock (`FOR UPDATE`). Set with `SET LOCAL` per transaction, because Neon's
+ * pooler (transaction mode) ignores session-level settings.
+ */
+const TRANSACTION_STATEMENT_TIMEOUT = "5s";
+
 export interface DatabaseTransaction {
   query<T>(text: string, params?: ReadonlyArray<unknown>): Promise<T[]>;
   afterCommit(callback: () => void): void;
@@ -49,6 +56,7 @@ export async function withTransaction<T>(
 
   try {
     await client.query("BEGIN");
+    await client.query(`SET LOCAL statement_timeout = '${TRANSACTION_STATEMENT_TIMEOUT}'`);
     const result = await callback(transaction);
     await client.query("COMMIT");
     committed = true;

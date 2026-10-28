@@ -22,12 +22,15 @@ import {
   type TeamProgressMessage,
 } from "@/hooks/use-event-stream";
 
-/** Matches the server's per-team answer cooldown. */
 const COOLDOWN_SECONDS = 5;
+const REQUEST_TIMEOUT_MS = 15_000;
+const REFETCH_RETRY_DELAYS_MS = [1_000, 3_000];
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const asSentence = (message: string) => (/[.!?]$/.test(message) ? message : `${message}.`);
 
 interface RiddleBoardProps {
   initialProgress: RiddlesResponse;
-  /** Supabase access token for the event stream. */
   accessToken: string | null;
   initialStatus: EventStatus;
 }
@@ -36,27 +39,55 @@ interface ApiError {
   error?: string;
 }
 
-export function RiddleBoard({ initialProgress, accessToken, initialStatus }: RiddleBoardProps) {
+export function RiddleBoard({
+  initialProgress,
+  accessToken,
+  initialStatus,
+}: Readonly<RiddleBoardProps>) {
   const router = useRouter();
   const [progress, setProgress] = useState(initialProgress);
   const [answer, setAnswer] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [resyncing, setResyncing] = useState(false);
   const [incorrect, setIncorrect] = useState<string | null>(null);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [zoomedImage, setZoomedImage] = useState<number | null>(null);
   const connectedOnce = useRef(false);
+  /** Bumped on every board update, so a slow refetch can't overwrite newer state. */
+  const progressVersion = useRef(0);
 
-  const refetch = useCallback(async () => {
-    try {
-      const response = await fetch(
-        `/api/events/${encodeURIComponent(initialProgress.eventId)}/riddles`
-      );
-      if (response.ok) setProgress((await response.json()) as RiddlesResponse);
-    } catch {
-      // The next stream message or reconnect will try again.
+  const applyProgress = useCallback((next: RiddlesResponse) => {
+    progressVersion.current += 1;
+    setProgress(next);
+  }, []);
+
+  /**
+   * Reloads the board from the server, retrying a couple of times. Resolves
+   * true once the board is current: this fetch landed, or newer state arrived
+   * while it ran (an older snapshot must not overwrite it).
+   */
+  const refetch = useCallback(async (): Promise<boolean> => {
+    const startedAt = progressVersion.current;
+    for (let attempt = 0; attempt <= REFETCH_RETRY_DELAYS_MS.length; attempt++) {
+      if (attempt > 0) await sleep(REFETCH_RETRY_DELAYS_MS[attempt - 1]!);
+      if (progressVersion.current !== startedAt) return true;
+      try {
+        const response = await fetch(
+          `/api/events/${encodeURIComponent(initialProgress.eventId)}/riddles`,
+          { cache: "no-store", signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }
+        );
+        if (!response.ok) continue;
+        const next = (await response.json()) as RiddlesResponse;
+        if (progressVersion.current !== startedAt) return true;
+        applyProgress(next);
+        return true;
+      } catch {
+        // Network error, timeout or a non-JSON reply: try again.
+      }
     }
-  }, [initialProgress.eventId]);
+    return false;
+  }, [initialProgress.eventId, applyProgress]);
 
   // A teammate flipped, solved or scanned. Messages leave out riddle text, so
   // keep the text we have and fetch it if a newly revealed card needs it.
@@ -74,7 +105,7 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
           locationName: known?.locationName ?? null,
         };
       });
-      setProgress({ ...progress, riddles, activeRiddle: msg.activeRiddle });
+      applyProgress({ ...progress, riddles, activeRiddle: msg.activeRiddle });
       setAnswer("");
       // A teammate solved or scanned: drop any cooldown left from the old riddle.
       if (msg.activeRiddle !== progress.activeRiddle) {
@@ -88,7 +119,7 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
       );
       if (missingText) void refetch();
     },
-    [progress, refetch]
+    [progress, refetch, applyProgress]
   );
 
   // The server sends a status snapshot on every (re)connect. Refetch then so
@@ -99,7 +130,12 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
         router.replace("/finished");
         return;
       }
-      if (connectedOnce.current) void refetch();
+      // Back online and caught up: an earlier connection error no longer applies.
+      if (connectedOnce.current) {
+        void refetch().then((synced) => {
+          if (synced) setError(null);
+        });
+      }
       connectedOnce.current = true;
     },
     [refetch, router]
@@ -126,11 +162,39 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
   async function post(position: number, action: "flip" | "answer") {
     setError(null);
     setSubmitting(true);
+    let answered = false;
+    try {
+      answered = await send(position, action);
+    } finally {
+      setSubmitting(false);
+    }
+    if (!answered) await resync();
+  }
+
+  /**
+   * A request failed without a clear answer, so the server may or may not
+   * have applied it. Pull the true board instead of guessing. The form stays
+   * usable meanwhile.
+   */
+  async function resync() {
+    setResyncing(true);
+    const synced = await refetch();
+    setResyncing(false);
+    setError(
+      synced
+        ? "We couldn't confirm that with the hunt server, so your board was re-synced."
+        : "Unable to reach the hunt server."
+    );
+  }
+
+  /** Sends a flip or answer. Resolves false when there was no usable reply. */
+  async function send(position: number, action: "flip" | "answer"): Promise<boolean> {
     try {
       const response = await fetch(
         `/api/events/${encodeURIComponent(progress.eventId)}/riddles/${position}/${action}`,
         {
           method: "POST",
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
           ...(action === "answer"
             ? {
                 headers: { "Content-Type": "application/json" },
@@ -139,6 +203,8 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
             : {}),
         }
       );
+      // 5xx (including a timed-out API) says nothing about whether it went through.
+      if (response.status >= 500) return false;
       const result = (await response.json()) as RiddlesResponse | ApiError;
       if (!response.ok) {
         const message = (result as ApiError).error ?? `Request failed (${response.status})`;
@@ -152,18 +218,18 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
           // 409 = a teammate changed the board first, so catch up with the server.
           if (response.status === 409) void refetch();
         }
-        return;
+        return true;
       }
-      setProgress(result as RiddlesResponse);
+      applyProgress(result as RiddlesResponse);
       if (action === "answer") {
         setAnswer("");
         setIncorrect(null);
         setCooldownSeconds(0);
       }
+      return true;
     } catch {
-      setError("Unable to reach the hunt server. Please try again.");
-    } finally {
-      setSubmitting(false);
+      // Network error, timeout, or a reply that isn't JSON.
+      return false;
     }
   }
 
@@ -330,10 +396,19 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
       <p className="text-center text-sm text-muted-foreground">
         {visitedCount} / {progress.riddles.length} locations completed
       </p>
-      {error ? (
-        <p role="alert" className="text-center text-sm text-destructive">
-          {error}
+      {resyncing ? (
+        <p role="status" className="text-center text-sm text-muted-foreground">
+          Reconnecting to the hunt server…
         </p>
+      ) : error ? (
+        <div role="alert" className="flex flex-col items-center gap-2 text-center">
+          <p className="text-sm text-destructive">
+            {asSentence(error)} Refresh the page to try again.
+          </p>
+          <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
+            Refresh page
+          </Button>
+        </div>
       ) : null}
       <ol className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {progress.riddles.map((riddle, index) => renderCard(riddle, index))}

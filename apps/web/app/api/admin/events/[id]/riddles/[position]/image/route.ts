@@ -21,7 +21,7 @@ export const GET = withRaft<Ctx>(async (_request, context) => {
 
 /** Uploads the image. The multipart body is forwarded as-is with its boundary. */
 export const POST = withRaft<Ctx>(async (request, context) => {
-  return forward(request, await imagePath(context));
+  return forward(request, await imagePath(context), { timeoutMs: 30_000 });
 });
 
 export const DELETE = withRaft<Ctx>(async (request, context) => {

@@ -25,10 +25,14 @@ interface TeamManageDialogProps {
 
 type Busy = "rename" | "delete" | `remove:${string}` | null;
 
+const REQUEST_TIMEOUT_MS = 15_000;
+const RETRY_HINT = "Refresh the page to try again.";
+
 /** Members, rename, remove a player, delete the team. */
 export function TeamManageDialog({ event, team, onClose, onChanged }: TeamManageDialogProps) {
   const [members, setMembers] = useState<TeamMember[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [name, setName] = useState(team.name);
   const [busy, setBusy] = useState<Busy>(null);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
@@ -38,18 +42,32 @@ export function TeamManageDialog({ event, team, onClose, onChanged }: TeamManage
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/teams/${encodeURIComponent(team.id)}`)
+    fetch(`/api/teams/${encodeURIComponent(team.id)}`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    })
       .then(async (response) => {
-        if (!response.ok)
-          throw new Error(await apiErrorMessage(response, "Couldn't load members"));
+        if (!response.ok) {
+          return { error: await apiErrorMessage(response, "Couldn't load members.") };
+        }
         return (await response.json()) as { members: TeamMember[] };
       })
-      .then((body) => !cancelled && setMembers(body.members))
-      .catch((err: Error) => !cancelled && setLoadError(err.message));
+      .then((result) => {
+        if (cancelled) return;
+        if ("error" in result) setLoadError(result.error);
+        else setMembers(result.members);
+      })
+      .catch(() => !cancelled && setLoadError("Couldn't reach the hunt server."));
     return () => {
       cancelled = true;
     };
-  }, [team.id]);
+  }, [team.id, loadAttempt]);
+
+  function retryLoad() {
+    setLoadError(null);
+    setMembers(null);
+    setLoadAttempt((n) => n + 1);
+  }
 
   async function run(kind: Busy, request: () => Promise<Response>, success: string) {
     setBusy(kind);
@@ -63,7 +81,7 @@ export function TeamManageDialog({ event, team, onClose, onChanged }: TeamManage
       onChanged();
       return true;
     } catch {
-      toast.error("Network error. Please try again.");
+      toast.error(`Couldn't reach the hunt server. ${RETRY_HINT}`);
       return false;
     } finally {
       setBusy(null);
@@ -79,6 +97,7 @@ export function TeamManageDialog({ event, team, onClose, onChanged }: TeamManage
       () =>
         fetch(base, {
           method: "PATCH",
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: trimmed }),
         }),
@@ -89,7 +108,11 @@ export function TeamManageDialog({ event, team, onClose, onChanged }: TeamManage
   async function removeMember(member: TeamMember) {
     const ok = await run(
       `remove:${member.userId}`,
-      () => fetch(`${base}/members/${encodeURIComponent(member.userId)}`, { method: "DELETE" }),
+      () =>
+        fetch(`${base}/members/${encodeURIComponent(member.userId)}`, {
+          method: "DELETE",
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        }),
       `Removed ${member.displayName}`
     );
     if (!ok) return;
@@ -103,7 +126,7 @@ export function TeamManageDialog({ event, team, onClose, onChanged }: TeamManage
   async function deleteTeam() {
     const ok = await run(
       "delete",
-      () => fetch(base, { method: "DELETE" }),
+      () => fetch(base, { method: "DELETE", signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
       `Deleted ${team.name}`
     );
     if (ok) onClose();
@@ -144,7 +167,14 @@ export function TeamManageDialog({ event, team, onClose, onChanged }: TeamManage
             Members ({members?.length ?? team.memberCount} / {event.teamSizeCap})
           </p>
           {loadError ? (
-            <p className="text-sm text-destructive">{loadError}</p>
+            <div role="alert" className="flex flex-wrap items-center gap-2">
+              <p className="text-sm text-destructive">
+                {/[.!?]$/.test(loadError) ? loadError : `${loadError}.`} {RETRY_HINT}
+              </p>
+              <Button size="sm" variant="outline" onClick={retryLoad}>
+                Retry
+              </Button>
+            </div>
           ) : members === null ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : members.length === 0 ? (
