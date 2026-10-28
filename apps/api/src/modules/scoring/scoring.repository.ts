@@ -7,6 +7,8 @@ export function pointsForVisit(visited: number): number {
 }
 
 export interface ScoredVisit {
+  /** Points this visit earned (its tier at the location). */
+  points: number;
   totalScore: number;
   lastScoredAt: string;
 }
@@ -63,6 +65,7 @@ export class ScoringRepository {
     if (!team) throw new Error("Team not found");
 
     return {
+      points,
       totalScore: team.total_score,
       lastScoredAt: team.last_scored_at,
     };

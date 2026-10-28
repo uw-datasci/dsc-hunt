@@ -15,5 +15,11 @@ export interface RiddlesResponse {
 
 export interface ScanResponse {
   locationName: string;
+  /** True when the team had already scanned this location; nothing was awarded. */
+  alreadyScanned: boolean;
+  /** Points earned at this location (the original award when `alreadyScanned`). */
+  points: number;
+  /** The team's total score after this scan. */
+  totalScore: number;
   progress: RiddlesResponse;
 }

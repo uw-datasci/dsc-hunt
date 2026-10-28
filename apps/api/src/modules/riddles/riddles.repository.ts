@@ -1,5 +1,11 @@
-import { query, queryOne } from "@dsc-hunt/db";
-import type { AnswerAttemptRow, LocationRow, ProgressRow, TeamStateRow } from "./riddles.types";
+import { query, queryOne, type DatabaseTransaction } from "@dsc-hunt/db";
+import type {
+  AnswerAttemptRow,
+  LocationRow,
+  PriorVisitRow,
+  ProgressRow,
+  TeamStateRow,
+} from "./riddles.types";
 
 /**
  * `CASE` over the six riddle columns, for the riddle at position `$n`. The
@@ -163,37 +169,41 @@ export class RiddlesRepository {
   }
 
   /**
-   * Marks the solved riddle visited, clears the active riddle, adds points and
-   * records the visit in one statement. Returns false if nothing changed.
+   * Marks the solved riddle visited and clears the active riddle, inside the
+   * scan transaction. Points and the visit row come from the scoring module.
+   * Returns false if nothing changed.
    */
-  async recordVisit(
+  async markVisited(
+    transaction: DatabaseTransaction,
     teamId: string,
     eventId: string,
-    location: LocationRow,
-    points: number
+    position: number
   ): Promise<boolean> {
-    const rows = await query(
-      `WITH scanned AS (
-         UPDATE teams
-         SET ${setRiddleStatusAt("$3", "visited")},
-             active_riddle = NULL,
-             total_score = total_score + $5
-         WHERE team_id = $1
-           AND event_id = $2
-           AND active_riddle = $3
-           AND ${riddleColumnAt("$3")} = 'solved'
-           AND ${EVENT_IS_LIVE}
-         RETURNING team_id
-       ),
-       visit AS (
-         INSERT INTO visits (location_id, team_id, points)
-         SELECT $4::uuid, team_id, $5::integer
-         FROM scanned
-         RETURNING team_id
-       )
-       SELECT team_id FROM visit`,
-      [teamId, eventId, location.position, location.location_id, points]
+    const rows = await transaction.query(
+      `UPDATE teams
+       SET ${setRiddleStatusAt("$3", "visited")},
+           active_riddle = NULL
+       WHERE team_id = $1
+         AND event_id = $2
+         AND active_riddle = $3
+         AND ${riddleColumnAt("$3")} = 'solved'
+         AND ${EVENT_IS_LIVE}
+       RETURNING team_id`,
+      [teamId, eventId, position]
     );
     return rows.length > 0;
+  }
+
+  /** What a team earned at a location it already visited, plus its current total. */
+  findPriorVisit(teamId: string, locationId: string): Promise<PriorVisitRow | null> {
+    return queryOne<PriorVisitRow>(
+      `SELECT visits.points, teams.total_score
+       FROM visits
+       JOIN teams ON teams.team_id = visits.team_id
+       WHERE visits.team_id = $1 AND visits.location_id = $2
+       ORDER BY visits.visited_at ASC
+       LIMIT 1`,
+      [teamId, locationId]
+    );
   }
 }

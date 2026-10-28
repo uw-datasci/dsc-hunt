@@ -16,13 +16,16 @@ import type {
 } from "../modules/riddles/riddles.types";
 import { riddlesSchema } from "../modules/riddles/riddles.schema";
 import { RiddlesService } from "../modules/riddles/riddles.service";
+import { ScoringRepository } from "../modules/scoring/scoring.repository";
+import { ScoringService } from "../modules/scoring/scoring.service";
 
 const eventsRoutes: FastifyPluginAsync = async (fastify) => {
   const eventsRepository = new EventsRepository();
   const service = new EventsService(eventsRepository, fastify.eventHub);
   const controller = new EventsController(service);
+  const scoring = new ScoringService(new ScoringRepository(), fastify.eventHub);
   const riddles = new RiddlesController(
-    new RiddlesService(new RiddlesRepository(), eventsRepository, fastify.eventHub)
+    new RiddlesService(new RiddlesRepository(), eventsRepository, fastify.eventHub, scoring)
   );
   const auth = fastify.requireAuth;
 

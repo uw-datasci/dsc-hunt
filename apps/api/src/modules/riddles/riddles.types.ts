@@ -30,6 +30,11 @@ export interface LocationRow {
   position: number;
 }
 
+export interface PriorVisitRow {
+  points: number;
+  total_score: number;
+}
+
 export interface EventParams {
   id: string;
 }

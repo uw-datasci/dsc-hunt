@@ -1,9 +1,11 @@
+import { withTransaction } from "@dsc-hunt/db";
 import type { RiddleStatus, RiddlesResponse, ScanResponse } from "@dsc-hunt/types";
 import { HttpError } from "../../lib/http-error";
 import type { EventsRepository } from "../events/events.repository";
 import type { EventHub } from "../realtime/event-hub";
+import type { ScoringService } from "../scoring/scoring.service";
 import type { RiddlesRepository } from "./riddles.repository";
-import type { ProgressRow, TeamStateRow } from "./riddles.types";
+import type { LocationRow, ProgressRow, TeamStateRow } from "./riddles.types";
 
 function getRiddleStatus(team: TeamStateRow, position: number): RiddleStatus {
   switch (position) {
@@ -30,7 +32,8 @@ export class RiddlesService {
   constructor(
     private readonly repository: RiddlesRepository,
     private readonly events: EventsRepository,
-    private readonly hub: EventHub
+    private readonly hub: EventHub,
+    private readonly scoring: ScoringService
   ) {}
 
   /** Id of the current hunt - the newest event, matching `GET /events/current`. */
@@ -110,28 +113,50 @@ export class RiddlesService {
 
       const team = await this.getTeamState(teamId);
       const status = getRiddleStatus(team, location.position);
-      if (status === "visited") throw new HttpError(409, "Already scanned");
+      if (status === "visited") return this.alreadyScanned(eventId, teamId, location);
       if (status !== "solved") throw new HttpError(409, "Solve the riddle first");
 
-      const recorded = await this.repository.recordVisit(
-        teamId,
-        eventId,
-        location,
-        this.scoreVisit()
-      );
-      if (!recorded) {
+      // Mark the riddle visited and score the visit atomically. Every scan
+      // locks its team row and then the location row, so there's no deadlock.
+      const scored = await withTransaction(async (tx) => {
+        if (!(await this.repository.markVisited(tx, teamId, eventId, location.position))) {
+          return null;
+        }
+        return this.scoring.scoreVisit(eventId, teamId, location.location_id, tx);
+      });
+
+      if (!scored) {
         const state = await this.getTeamState(teamId);
         if (getRiddleStatus(state, location.position) === "visited") {
-          throw new HttpError(409, "Already scanned");
+          return this.alreadyScanned(eventId, teamId, location);
         }
         throw new HttpError(409, "Solve the riddle first");
       }
 
       return {
         locationName: location.name,
+        alreadyScanned: false,
+        points: scored.points,
+        totalScore: scored.totalScore,
         progress: this.publishProgress(await this.getProgressForTeam(eventId, teamId)),
       };
     });
+  }
+
+  /** A re-scan by a team that already found this location: report, don't award. */
+  private async alreadyScanned(
+    eventId: string,
+    teamId: string,
+    location: LocationRow
+  ): Promise<ScanResponse> {
+    const prior = await this.repository.findPriorVisit(teamId, location.location_id);
+    return {
+      locationName: location.name,
+      alreadyScanned: true,
+      points: prior?.points ?? 0,
+      totalScore: prior?.total_score ?? 0,
+      progress: await this.getProgressForTeam(eventId, teamId),
+    };
   }
 
   private async requireLiveTeam(eventId: string, userId: string): Promise<string> {
@@ -193,11 +218,6 @@ export class RiddlesService {
       activeRiddle: progress.activeRiddle,
     });
     return progress;
-  }
-
-  private scoreVisit(): number {
-    // TODO: replace this placeholder with the scoring function from issue #10.
-    return 0;
   }
 
   private async withTeamLock<T>(teamId: string, action: () => Promise<T>): Promise<T> {
