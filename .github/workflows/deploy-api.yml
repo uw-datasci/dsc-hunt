@@ -4,6 +4,17 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    paths:
+      - .github/workflows/deploy-api.yml
+      - apps/api/**
+      - packages/db/**
+      - packages/types/**
+      - docker/Dockerfile
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - tsconfig.json
+      - turbo.json
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -42,6 +53,9 @@ jobs:
   build-docker:
     name: Build Docker Image
     needs: setup
+    permissions:
+      contents: read
+      packages: write
     uses: uw-datasci/nexus-workflows/.github/workflows/build-docker.yml@v4
     with:
       node-version: ${{ needs.setup.outputs.node-version }}

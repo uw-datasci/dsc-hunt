@@ -1,16 +1,21 @@
 ARG NODE_VERSION=24
 
 FROM node:${NODE_VERSION}-alpine AS base
-RUN corepack enable && corepack prepare pnpm@11.3.0 --activate
+RUN corepack enable && corepack prepare pnpm@12.8.1 --activate
 WORKDIR /app
 
 # --- Install workspace deps for `api` only ---
 FROM base AS deps
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/api/package.json ./apps/api/
 # Workspace package manifests (api may depend on shared packages later)
 COPY packages ./packages
-RUN pnpm install --frozen-lockfile --filter api...
+# pnpm 12+ ignores ${ENV} in the project .npmrc's auth, so point a user-level config at the
+# mounted secret. The file holds the literal `${NODE_AUTH_TOKEN}` reference, not the token.
+# The api doesn't use @uw-datasci/raft, but pnpm's supply-chain check covers the whole lockfile.
+RUN --mount=type=secret,id=NODE_AUTH_TOKEN,env=NODE_AUTH_TOKEN \
+  echo '//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}' > "$HOME/.npmrc" && \
+  pnpm install --frozen-lockfile --filter api...
 
 # --- Compile ---
 FROM deps AS build
