@@ -12,11 +12,6 @@ export interface TeamMemberRow {
   joined_at: string;
 }
 
-export interface EventStatsRow {
-  team_count: number;
-  player_count: number;
-}
-
 export type AddMemberResult = "added" | "full" | "missing";
 
 export interface EventParams {

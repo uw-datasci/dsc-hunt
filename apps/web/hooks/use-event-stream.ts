@@ -11,6 +11,7 @@ export type EventStatusMessage = ServerMessage & { type: "event_status" };
 export type TeamProgressMessage = ServerMessage & { type: "team_progress" };
 export type TeamMembersMessage = ServerMessage & { type: "team_members" };
 export type ScoreUpdateMessage = ServerMessage & { type: "score_update" };
+export type EventStatsMessage = ServerMessage & { type: "event_stats" };
 
 interface UseEventStreamOptions {
   /** Pass null to stay disconnected (e.g. no event yet). */
@@ -35,6 +36,8 @@ interface UseEventStreamOptions {
   onTeamMembers?: (msg: TeamMembersMessage) => void;
   /** Any team's score changed (leaderboard). */
   onScoreUpdate?: (msg: ScoreUpdateMessage) => void;
+  /** Dashboard counters + start readiness. The server only sends these to staff. */
+  onEventStats?: (msg: EventStatsMessage) => void;
 }
 
 /**
@@ -61,6 +64,7 @@ export function useEventStream({
   onTeamProgress,
   onTeamMembers,
   onScoreUpdate,
+  onEventStats,
 }: UseEventStreamOptions): EventStatus | null {
   const [status, setStatus] = useState<EventStatus | null>(initialStatus);
 
@@ -70,12 +74,14 @@ export function useEventStream({
   const onTeamProgressRef = useRef(onTeamProgress);
   const onTeamMembersRef = useRef(onTeamMembers);
   const onScoreUpdateRef = useRef(onScoreUpdate);
+  const onEventStatsRef = useRef(onEventStats);
   useEffect(() => {
     onEventStatusRef.current = onEventStatus;
     onTeamProgressRef.current = onTeamProgress;
     onTeamMembersRef.current = onTeamMembers;
     onScoreUpdateRef.current = onScoreUpdate;
-  }, [onEventStatus, onTeamProgress, onTeamMembers, onScoreUpdate]);
+    onEventStatsRef.current = onEventStats;
+  }, [onEventStatus, onTeamProgress, onTeamMembers, onScoreUpdate, onEventStats]);
 
   useEffect(() => {
     if (!eventId || (!accessToken && !allowAnonymous)) return;
@@ -118,6 +124,9 @@ export function useEventStream({
             break;
           case "score_update":
             onScoreUpdateRef.current?.(msg);
+            break;
+          case "event_stats":
+            onEventStatsRef.current?.(msg);
             break;
           default:
             break;

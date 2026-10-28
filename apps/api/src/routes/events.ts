@@ -18,10 +18,14 @@ import { riddlesSchema } from "../modules/riddles/riddles.schema";
 import { RiddlesService } from "../modules/riddles/riddles.service";
 import { ScoringRepository } from "../modules/scoring/scoring.repository";
 import { ScoringService } from "../modules/scoring/scoring.service";
+import { StatsPublisher } from "../modules/stats/stats.publisher";
+import { StatsRepository } from "../modules/stats/stats.repository";
 
 const eventsRoutes: FastifyPluginAsync = async (fastify) => {
   const eventsRepository = new EventsRepository();
-  const service = new EventsService(eventsRepository, fastify.eventHub);
+  const statsRepository = new StatsRepository();
+  const stats = new StatsPublisher(statsRepository, fastify.eventHub, fastify.log);
+  const service = new EventsService(eventsRepository, fastify.eventHub, statsRepository, stats);
   const controller = new EventsController(service);
   const scoring = new ScoringService(new ScoringRepository(), fastify.eventHub);
   const riddles = new RiddlesController(
@@ -30,7 +34,8 @@ const eventsRoutes: FastifyPluginAsync = async (fastify) => {
       eventsRepository,
       fastify.eventHub,
       scoring,
-      fastify.storage
+      fastify.storage,
+      stats
     )
   );
   const auth = fastify.requireAuth;
@@ -54,6 +59,11 @@ const eventsRoutes: FastifyPluginAsync = async (fastify) => {
     "/events/:id/starting-location",
     { schema: eventsSchema.setStartingLocation, preHandler: fastify.requireAdmin },
     controller.setStartingLocation
+  );
+  fastify.get(
+    "/events/:id/admin/stats",
+    { schema: eventsSchema.getStats, preHandler: fastify.requireAdmin },
+    controller.getStats
   );
   fastify.post(
     "/events/:id/end",

@@ -1,4 +1,5 @@
 import type { EventStatus } from "../event/events";
+import type { EventStats } from "../event/stats";
 import type { TeamMember } from "../event/teams";
 import type { RiddleCard } from "../hunt/riddles";
 
@@ -37,9 +38,11 @@ export type ServerMessage =
       members: TeamMember[];
     }
   | {
-      /** Live registration counters, sent after every roster change. Staff only. */
+      /**
+       * Dashboard counters and start readiness, sent after roster changes,
+       * scans, riddle saves and starting-location edits. Staff only.
+       */
       type: "event_stats";
       eventId: string;
-      teamCount: number;
-      playerCount: number;
+      stats: EventStats;
     };

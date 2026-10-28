@@ -9,13 +9,16 @@ import type {
   SaveRiddleBody,
 } from "../modules/admin-riddles/admin-riddles.types";
 import { EventsRepository } from "../modules/events/events.repository";
+import { StatsPublisher } from "../modules/stats/stats.publisher";
+import { StatsRepository } from "../modules/stats/stats.repository";
 
 const adminRiddlesRoutes: FastifyPluginAsync = async (fastify) => {
   const controller = new AdminRiddlesController(
     new AdminRiddlesService(
       new AdminRiddlesRepository(),
       new EventsRepository(),
-      fastify.storage
+      fastify.storage,
+      new StatsPublisher(new StatsRepository(), fastify.eventHub, fastify.log)
     )
   );
   const admin = fastify.requireAdmin;

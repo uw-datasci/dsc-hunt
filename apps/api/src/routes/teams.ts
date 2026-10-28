@@ -11,12 +11,15 @@ import type {
   JoinParams,
   TeamParams,
 } from "../modules/teams/teams.types";
+import { StatsPublisher } from "../modules/stats/stats.publisher";
+import { StatsRepository } from "../modules/stats/stats.repository";
 
 const teamsRoutes: FastifyPluginAsync = async (fastify) => {
   const service = new TeamsService(
     new TeamsRepository(),
     new EventsRepository(),
-    fastify.eventHub
+    fastify.eventHub,
+    new StatsPublisher(new StatsRepository(), fastify.eventHub, fastify.log)
   );
   const controller = new TeamsController(service);
   const auth = fastify.requireAuth;

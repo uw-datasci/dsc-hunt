@@ -4,6 +4,7 @@ import { HttpError } from "../../lib/http-error";
 import type { EventsRepository } from "../events/events.repository";
 import type { EventHub } from "../realtime/event-hub";
 import type { ScoringService } from "../scoring/scoring.service";
+import type { StatsPublisher } from "../stats/stats.publisher";
 import { SIGNED_URL_SECONDS, type ObjectStorage } from "../../plugins/storage";
 import { matchesAnswer } from "./answer-match";
 import type { RiddlesRepository } from "./riddles.repository";
@@ -36,7 +37,8 @@ export class RiddlesService {
     private readonly events: EventsRepository,
     private readonly hub: EventHub,
     private readonly scoring: ScoringService,
-    private readonly storage: ObjectStorage | null = null
+    private readonly storage: ObjectStorage | null = null,
+    private readonly stats: StatsPublisher | null = null
   ) {}
 
   /**
@@ -147,6 +149,7 @@ export class RiddlesService {
         throw new HttpError(409, "Solve the riddle first");
       }
 
+      await this.stats?.publish(eventId);
       return {
         locationName: location.name,
         alreadyScanned: false,

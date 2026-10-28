@@ -5,6 +5,7 @@ import { HttpError } from "../../lib/http-error";
 import type { EventsRepository } from "../events/events.repository";
 import { normalizeAnswer } from "../riddles/answer-match";
 import { SIGNED_URL_SECONDS, type ObjectStorage } from "../../plugins/storage";
+import type { StatsPublisher } from "../stats/stats.publisher";
 import type { AdminRiddlesRepository } from "./admin-riddles.repository";
 import type { SaveRiddleBody, UploadedImage } from "./admin-riddles.types";
 import { riddleImageKey, sniffImageType } from "./riddle-image";
@@ -42,7 +43,8 @@ export class AdminRiddlesService {
   constructor(
     private readonly repository: AdminRiddlesRepository,
     private readonly events: EventsRepository,
-    private readonly storage: ObjectStorage | null = null
+    private readonly storage: ObjectStorage | null = null,
+    private readonly stats: StatsPublisher | null = null
   ) {}
 
   /**
@@ -120,7 +122,7 @@ export class AdminRiddlesService {
     if (!locationName) throw new HttpError(400, "Location name is required");
     const answers = cleanAnswers(body.answers);
 
-    return this.withEditableEvent(eventId, (tx) =>
+    const saved = await this.withEditableEvent(eventId, (tx) =>
       this.repository.upsert(tx, {
         eventId,
         position,
@@ -130,6 +132,9 @@ export class AdminRiddlesService {
         newQrIdentifier: generateQrIdentifier(),
       })
     );
+    // The configured-riddle count (and a start blocker) may have changed.
+    await this.stats?.publish(eventId);
+    return saved;
   }
 
   /** Issues a new QR code for a position; previously printed codes stop working. */

@@ -9,6 +9,7 @@ import {
 import { HttpError } from "../../lib/http-error";
 import type { EventsRepository } from "../events/events.repository";
 import type { EventHub } from "../realtime/event-hub";
+import type { StatsPublisher } from "../stats/stats.publisher";
 import type { TeamsRepository } from "./teams.repository";
 
 const CODE_MIN = 10_000;
@@ -45,7 +46,8 @@ export class TeamsService {
   constructor(
     private readonly repository: TeamsRepository,
     private readonly events: EventsRepository,
-    private readonly hub: EventHub
+    private readonly hub: EventHub,
+    private readonly stats: StatsPublisher | null = null
   ) {}
 
   async create(eventId: string, user: AuthenticatedUser, name?: string): Promise<Team> {
@@ -172,11 +174,8 @@ export class TeamsService {
 
   /** Tells the team's lobby who's on it (team + staff), and staff the new counts. */
   private async publishRoster(eventId: string, teamId: string): Promise<void> {
-    const [members, stats] = await Promise.all([
-      this.repository.listMembers(teamId),
-      this.repository.stats(eventId),
-    ]);
+    const members = await this.repository.listMembers(teamId);
     this.hub.publishToTeam(eventId, teamId, { type: "team_members", eventId, teamId, members });
-    this.hub.publishToStaff(eventId, { type: "event_stats", eventId, ...stats });
+    await this.stats?.publish(eventId);
   }
 }

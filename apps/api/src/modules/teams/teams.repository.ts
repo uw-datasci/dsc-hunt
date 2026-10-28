@@ -1,6 +1,6 @@
 import { query, queryOne, withTransaction } from "@dsc-hunt/db";
 import type { Team, TeamMember } from "@dsc-hunt/types";
-import type { AddMemberResult, EventStatsRow, TeamMemberRow, TeamRow } from "./teams.types";
+import type { AddMemberResult, TeamMemberRow, TeamRow } from "./teams.types";
 
 const TEAM_COLUMNS = `teams.team_id, teams.event_id, teams.code, teams.team_name, teams.created_at`;
 
@@ -143,15 +143,5 @@ export class TeamsRepository {
         [teamId]
       );
     });
-  }
-
-  async stats(eventId: string): Promise<{ teamCount: number; playerCount: number }> {
-    const row = await queryOne<EventStatsRow>(
-      `SELECT
-         (SELECT count(*) FROM teams WHERE event_id = $1)::integer AS team_count,
-         (SELECT count(*) FROM team_members WHERE event_id = $1)::integer AS player_count`,
-      [eventId]
-    );
-    return { teamCount: row?.team_count ?? 0, playerCount: row?.player_count ?? 0 };
   }
 }
