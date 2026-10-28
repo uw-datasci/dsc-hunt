@@ -44,7 +44,7 @@ export function RiddlesTable({ event, riddles, origin }: RiddlesTableProps) {
               <TableHead className="w-12">#</TableHead>
               <TableHead>Riddle</TableHead>
               <TableHead>Location</TableHead>
-              <TableHead className="text-right">Answers</TableHead>
+              <TableHead>Answers</TableHead>
               <TableHead>QR code</TableHead>
               <TableHead />
             </TableRow>
@@ -68,8 +68,12 @@ export function RiddlesTable({ event, riddles, origin }: RiddlesTableProps) {
                   <TableCell>
                     {riddle.locationName ?? <span className="text-muted-foreground">—</span>}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {riddle.answers.length}
+                  <TableCell className="max-w-xs whitespace-normal">
+                    {riddle.answers.length > 0 ? (
+                      riddle.answers.join(", ")
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     {scanUrl ? (
