@@ -12,9 +12,21 @@ const eventObject = {
     startedAt: nullableString,
     endedAt: nullableString,
     teamSizeCap: { type: "integer" },
+    startingLocationName: nullableString,
+    startingLocationDetails: nullableString,
     createdAt: { type: "string" },
   },
-  required: ["id", "name", "status", "startedAt", "endedAt", "teamSizeCap", "createdAt"],
+  required: [
+    "id",
+    "name",
+    "status",
+    "startedAt",
+    "endedAt",
+    "teamSizeCap",
+    "startingLocationName",
+    "startingLocationDetails",
+    "createdAt",
+  ],
 } as const;
 
 const eventEnvelope = {
@@ -51,6 +63,22 @@ export const eventsSchema = {
     tags: ["events", "admin"],
     summary: "Start the hunt (not_started -> live). Staff only.",
     params: idParams,
+    response: { 200: eventEnvelope, 404: errorObject, 409: errorObject },
+  },
+  setStartingLocation: {
+    tags: ["events", "admin"],
+    summary:
+      "Set the starting location (event venue). Staff only, before the start. A blank name clears it.",
+    params: idParams,
+    body: {
+      type: "object",
+      required: ["name"],
+      additionalProperties: false,
+      properties: {
+        name: { type: "string", maxLength: 100 },
+        details: { type: ["string", "null"], maxLength: 500 },
+      },
+    },
     response: { 200: eventEnvelope, 404: errorObject, 409: errorObject },
   },
   end: {

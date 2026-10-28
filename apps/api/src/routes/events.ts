@@ -44,6 +44,11 @@ const eventsRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: eventsSchema.start, preHandler: fastify.requireAdmin },
     controller.start
   );
+  fastify.put(
+    "/events/:id/starting-location",
+    { schema: eventsSchema.setStartingLocation, preHandler: fastify.requireAdmin },
+    controller.setStartingLocation
+  );
   fastify.post(
     "/events/:id/end",
     { schema: eventsSchema.end, preHandler: fastify.requireAdmin },

@@ -8,6 +8,8 @@ import {
   TableRow,
 } from "@dsc-hunt/ui/components/table";
 import { AdminShell } from "@/components/admin/admin-shell";
+import { StartingLocationEditor } from "@/components/admin/starting-location-editor";
+import { getCurrentEvent } from "@/lib/event/current";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +31,8 @@ const PLACEHOLDER_RIDDLES = [
 ];
 
 export default async function AdminRiddlesPage() {
+  const event = await getCurrentEvent();
+
   return (
     <AdminShell
       title="Riddles"
@@ -37,10 +41,13 @@ export default async function AdminRiddlesPage() {
         <Button disabled>Add riddle</Button>
       }
     >
-      {/* TODO: choose the starting location teams meet at before the hunt begins. */}
-      <div className="mb-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-        Starting location: <span className="text-foreground">not set</span>
-      </div>
+      {event ? (
+        <StartingLocationEditor event={event} />
+      ) : (
+        <p className="mb-4 text-sm text-muted-foreground">
+          No event found. Check the API is running and migrations have been applied.
+        </p>
+      )}
 
       <div className="rounded-xl border bg-card">
         <Table>

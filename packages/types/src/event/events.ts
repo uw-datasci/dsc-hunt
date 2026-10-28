@@ -13,5 +13,9 @@ export interface Event {
   endedAt: string | null;
   /** Most players a team can have. */
   teamSizeCap: number;
+  /** Venue where the event is held and the hunt is introduced. Null until set. */
+  startingLocationName: string | null;
+  /** Optional extra directions for the venue (room, time, landmark). */
+  startingLocationDetails: string | null;
   createdAt: string;
 }

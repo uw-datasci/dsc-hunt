@@ -8,6 +8,15 @@ export class EventsController {
     this.getById = this.getById.bind(this);
     this.start = this.start.bind(this);
     this.end = this.end.bind(this);
+    this.setStartingLocation = this.setStartingLocation.bind(this);
+  }
+
+  setStartingLocation(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
+    const { name, details } = request.body as { name: string; details?: string | null };
+    return handle(reply, async () => ({
+      event: await this.service.setStartingLocation(id, name, details),
+    }));
   }
 
   getCurrent(_request: FastifyRequest, reply: FastifyReply) {

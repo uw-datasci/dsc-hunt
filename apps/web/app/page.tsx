@@ -7,8 +7,8 @@ import { isStaffRole } from "@dsc-hunt/types";
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
-  const user = await getAuthenticatedUser();
-  const event = user ? await getCurrentEvent() : null;
+  // The current event is public, so logged-out visitors also see the venue.
+  const [user, event] = await Promise.all([getAuthenticatedUser(), getCurrentEvent()]);
 
   const session = user
     ? {
@@ -20,5 +20,5 @@ export default async function LandingPage() {
 
   const loginUrl = await buildLoginUrl();
 
-  return <LandingHero loginUrl={loginUrl} session={session} />;
+  return <LandingHero loginUrl={loginUrl} session={session} event={event} />;
 }
