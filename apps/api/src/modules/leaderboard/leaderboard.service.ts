@@ -19,6 +19,7 @@ export class LeaderboardService {
       teamId: row.team_id,
       name: row.team_name,
       totalScore: row.total_score,
+      lastScoredAt: row.last_scored_at ? new Date(row.last_scored_at).toISOString() : null,
     }));
   }
 }

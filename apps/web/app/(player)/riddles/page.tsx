@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { RiddlesResponse } from "@dsc-hunt/types";
 import { EventStatusRedirect } from "@/components/event/event-status-redirect";
@@ -25,7 +26,17 @@ export default async function HuntPage() {
       width="max-w-2xl"
       eyebrow={team.name}
       title="Your riddles"
-      description="Reveal one riddle at a time, then solve it to unlock its location."
+      description={
+        <>
+          Reveal one riddle at a time, then solve it to unlock its location.{" "}
+          <Link
+            href="/leaderboard"
+            className="underline underline-offset-4 hover:text-foreground"
+          >
+            Leaderboard
+          </Link>
+        </>
+      }
     >
       {/* The board also sends players to /finished the moment an admin ends the hunt. */}
       {data ? (

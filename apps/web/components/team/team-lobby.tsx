@@ -128,6 +128,9 @@ export function TeamLobby({ team, event, accessToken }: TeamLobbyProps) {
           {STATUS_HELPER[status] ? (
             <p className="text-center text-sm text-muted-foreground">{STATUS_HELPER[status]}</p>
           ) : null}
+          <Button asChild variant="ghost">
+            <Link href="/leaderboard">View the leaderboard</Link>
+          </Button>
           {canLeave ? (
             <Button variant="outline" disabled={refreshing} onClick={() => setLeaveOpen(true)}>
               Leave team

@@ -1,8 +1,16 @@
-
-import { getCurrentEvent } from "@/lib/event/current";
+import type { LeaderboardEntry } from "@dsc-hunt/types";
 import { PageShell } from "@/components/shared/page-shell";
+import { proxyApiJson } from "@/lib/api/proxy";
+import { getAccessToken } from "@/lib/auth/session";
+import { getCurrentEvent } from "@/lib/event/current";
 import LeaderboardClient from "./leaderboard-client";
 
+export const dynamic = "force-dynamic";
+
+/**
+ * Public: projected at home base and viewed on phones, so it works logged
+ * out. The board is loaded here and kept live by the client.
+ */
 export default async function LeaderboardPage() {
   const event = await getCurrentEvent();
 
@@ -14,15 +22,26 @@ export default async function LeaderboardPage() {
         title="Leaderboard"
         description="Highest score wins. Ties go to the team that got there first."
       >
-        <p>No current event is available. Make sure the hunt has started and you're signed in.</p>
+        <p className="text-center text-sm text-muted-foreground">
+          No hunt has been set up yet. Check back soon.
+        </p>
       </PageShell>
     );
   }
 
+  const [{ data }, accessToken] = await Promise.all([
+    proxyApiJson<{ leaderboard: LeaderboardEntry[] }>(
+      `/events/${encodeURIComponent(event.id)}/leaderboard`,
+      { cache: "no-store" }
+    ),
+    getAccessToken(),
+  ]);
+
   return (
     <LeaderboardClient
-      eventId={event.id}
-      eventName="DSC Hunt"
+      event={event}
+      initialEntries={data?.leaderboard ?? null}
+      accessToken={accessToken}
     />
   );
 }

@@ -29,12 +29,9 @@ const eventsRoutes: FastifyPluginAsync = async (fastify) => {
   );
   const auth = fastify.requireAuth;
 
-  // Any signed-in player can read status; it gates the home page and /riddles.
-  fastify.get(
-    "/events/current",
-    { schema: eventsSchema.getCurrent, preHandler: auth },
-    controller.getCurrent
-  );
+  // Public: status gates the home page and /riddles, and the logged-out
+  // leaderboard needs the current event too.
+  fastify.get("/events/current", { schema: eventsSchema.getCurrent }, controller.getCurrent);
   fastify.get(
     "/events/:id",
     { schema: eventsSchema.getById, preHandler: auth },

@@ -14,7 +14,9 @@ const realtimeRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.get(
     "/events/:id/stream",
-    { schema: realtimeSchema.stream, preHandler: fastify.requireAuth },
+    // No requireAuth: the public leaderboard streams logged out. The auth hook
+    // still identifies signed-in players from `?access_token=`.
+    { schema: realtimeSchema.stream },
     controller.stream
   );
 };

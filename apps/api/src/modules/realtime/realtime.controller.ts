@@ -34,10 +34,11 @@ export class RealtimeController {
     const event = await this.events.findById(eventId);
     if (!event) return reply.code(404).send({ error: "Event not found" });
 
-    // requireAuth guarantees a user. Their team decides which team-only
+    // Login is optional (the leaderboard is public). Anonymous viewers only get
+    // event-wide messages. A signed-in player's team decides which team-only
     // messages they get; the teams service keeps it current on join/leave.
-    const user = request.user!;
-    const team = await this.teams.getTeamForUser(user.id, eventId);
+    const user = request.user;
+    const team = user ? await this.teams.getTeamForUser(user.id, eventId) : null;
 
     // Hijack skips Fastify onSend hooks, so @fastify/cors never writes headers.
     // EventSource is cross-origin from the web app and needs them on the raw response.
@@ -54,9 +55,9 @@ export class RealtimeController {
     reply.raw.flushHeaders();
 
     this.hub.subscribe(eventId, reply, {
-      userId: user.id,
+      userId: user?.id ?? null,
       teamId: team?.id ?? null,
-      isStaff: isStaffRole(user.role),
+      isStaff: user ? isStaffRole(user.role) : false,
     });
 
     // Snapshot the current status immediately so a client that just

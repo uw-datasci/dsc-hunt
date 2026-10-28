@@ -5,7 +5,8 @@ const HEARTBEAT_MS = 25_000;
 
 /** Who is on the other end of a stream; decides which messages they receive. */
 export interface Subscriber {
-  userId: string;
+  /** Null for an anonymous viewer (e.g. the public leaderboard). */
+  userId: string | null;
   /** The user's team in this event, kept current by `setUserTeam`. */
   teamId: string | null;
   isStaff: boolean;
@@ -77,7 +78,9 @@ export class EventHub {
     const streams = this.subscribers.get(eventId);
     if (!streams) return;
     for (const subscriber of streams.values()) {
-      if (subscriber.userId === userId) subscriber.teamId = teamId;
+      if (subscriber.userId !== null && subscriber.userId === userId) {
+        subscriber.teamId = teamId;
+      }
     }
   }
 

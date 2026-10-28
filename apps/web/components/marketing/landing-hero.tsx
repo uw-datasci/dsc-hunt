@@ -58,6 +58,15 @@ export function LandingHero({ loginUrl, session }: Readonly<LandingHeroProps>) {
             </p>
           </div>
         )}
+
+        <p className="mt-6 text-center text-sm">
+          <Link
+            href="/leaderboard"
+            className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          >
+            View the leaderboard
+          </Link>
+        </p>
       </div>
     </div>
   );

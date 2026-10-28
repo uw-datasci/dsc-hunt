@@ -4,4 +4,6 @@ export interface LeaderboardEntry {
   teamId: string;
   name: string;
   totalScore: number;
+  /** ISO time the team last scored; the tie-break (earlier wins). Null before scoring. */
+  lastScoredAt: string | null;
 }

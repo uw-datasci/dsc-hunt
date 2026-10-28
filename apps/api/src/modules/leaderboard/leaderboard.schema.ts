@@ -7,8 +7,9 @@ const leaderboardEntry = {
     teamId: { type: "string" },
     name: { type: "string" },
     totalScore: { type: "integer" },
+    lastScoredAt: { type: ["string", "null"] },
   },
-  required: ["rank", "teamId", "name", "totalScore"],
+  required: ["rank", "teamId", "name", "totalScore", "lastScoredAt"],
 } as const;
 
 const errorObject = {
