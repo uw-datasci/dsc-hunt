@@ -38,6 +38,11 @@ interface UseEventStreamOptions {
   onScoreUpdate?: (msg: ScoreUpdateMessage) => void;
   /** Dashboard counters + start readiness. The server only sends these to staff. */
   onEventStats?: (msg: EventStatsMessage) => void;
+  /**
+   * Every message, unfiltered (after the typed callbacks). For staff views that
+   * react to any team's activity, e.g. refetching the admin live view.
+   */
+  onMessage?: (msg: ServerMessage) => void;
 }
 
 /**
@@ -65,6 +70,7 @@ export function useEventStream({
   onTeamMembers,
   onScoreUpdate,
   onEventStats,
+  onMessage,
 }: UseEventStreamOptions): EventStatus | null {
   const [status, setStatus] = useState<EventStatus | null>(initialStatus);
 
@@ -75,13 +81,15 @@ export function useEventStream({
   const onTeamMembersRef = useRef(onTeamMembers);
   const onScoreUpdateRef = useRef(onScoreUpdate);
   const onEventStatsRef = useRef(onEventStats);
+  const onMessageRef = useRef(onMessage);
   useEffect(() => {
     onEventStatusRef.current = onEventStatus;
     onTeamProgressRef.current = onTeamProgress;
     onTeamMembersRef.current = onTeamMembers;
     onScoreUpdateRef.current = onScoreUpdate;
     onEventStatsRef.current = onEventStats;
-  }, [onEventStatus, onTeamProgress, onTeamMembers, onScoreUpdate, onEventStats]);
+    onMessageRef.current = onMessage;
+  }, [onEventStatus, onTeamProgress, onTeamMembers, onScoreUpdate, onEventStats, onMessage]);
 
   useEffect(() => {
     if (!eventId || (!accessToken && !allowAnonymous)) return;
@@ -131,6 +139,7 @@ export function useEventStream({
           default:
             break;
         }
+        onMessageRef.current?.(msg);
       };
 
       es.onerror = () => {
