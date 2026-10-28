@@ -71,6 +71,7 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
           status,
           text: known?.text ?? null,
           hasImage: known?.hasImage ?? false,
+          locationName: known?.locationName ?? null,
         };
       });
       setProgress({ ...progress, riddles, activeRiddle: msg.activeRiddle });
@@ -81,7 +82,9 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
         setCooldownSeconds(0);
       }
       const missingText = riddles.some(
-        (r) => !r.text && (r.status !== "unvisited" || msg.activeRiddle === r.position)
+        (r) =>
+          (!r.text && (r.status !== "unvisited" || msg.activeRiddle === r.position)) ||
+          (!r.locationName && r.status !== "unvisited")
       );
       if (missingText) void refetch();
     },
@@ -247,7 +250,17 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
                   <QrCode className="mb-3 h-8 w-8 text-primary" />
                   <p className="font-semibold">Solved!</p>
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Go to the location and scan the QR code to unlock your next riddle.
+                    {riddle.locationName ? (
+                      <>
+                        Go to{" "}
+                        <span className="font-semibold text-foreground">
+                          {riddle.locationName}
+                        </span>{" "}
+                        and scan the QR code to unlock your next riddle.
+                      </>
+                    ) : (
+                      "Go to the location and scan the QR code to unlock your next riddle."
+                    )}
                   </p>
                 </div>
               ) : isFlipped ? (

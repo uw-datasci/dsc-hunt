@@ -35,17 +35,22 @@ function setRiddleStatusAt(param: string, status: "solved" | "visited"): string 
 const IS_REVEALED = `(teams.active_riddle = positions.position
         OR ${riddleColumnAt("positions.position", "teams")} IN ('solved', 'visited'))`;
 
+/** The location is the riddle's answer, so it's only shown once solved / visited. */
+const IS_SOLVED = `${riddleColumnAt("positions.position", "teams")} IN ('solved', 'visited')`;
+
 const PROGRESS_SQL = `
   SELECT positions.position,
     ${riddleColumnAt("positions.position", "teams")} AS status,
     CASE WHEN ${IS_REVEALED} THEN riddles.riddle_text ELSE NULL END AS text,
     COALESCE(${IS_REVEALED} AND riddles.image_key IS NOT NULL, false) AS has_image,
+    CASE WHEN ${IS_SOLVED} THEN locations.name ELSE NULL END AS location_name,
     teams.active_riddle
   FROM teams
   CROSS JOIN generate_series(1, 6) AS positions(position)
   LEFT JOIN riddles
     ON riddles.event_id = teams.event_id
     AND riddles.position = positions.position
+  LEFT JOIN locations ON locations.riddle_id = riddles.riddle_id
   WHERE teams.team_id = $1
   ORDER BY positions.position`;
 

@@ -9,6 +9,8 @@ export interface RiddleCard {
    * Like `text`, only true once the card is revealed (active, solved or visited).
    */
   hasImage: boolean;
+  /** Where to scan the QR code. Only set once the riddle is solved or visited. */
+  locationName: string | null;
 }
 
 export interface RiddlesResponse {

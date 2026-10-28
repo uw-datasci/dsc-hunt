@@ -5,6 +5,7 @@ export interface ProgressRow {
   status: RiddleStatus;
   text: string | null;
   has_image: boolean;
+  location_name: string | null;
   active_riddle: number | null;
 }
 

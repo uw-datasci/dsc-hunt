@@ -228,6 +228,7 @@ export class RiddlesService {
         status: row.status,
         text: row.text,
         hasImage: row.has_image,
+        locationName: row.location_name,
       })),
       activeRiddle: rows[0]?.active_riddle ?? null,
     };
