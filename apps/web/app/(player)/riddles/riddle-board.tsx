@@ -2,10 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LockKeyhole, QrCode } from "lucide-react";
+import { ImageIcon, LockKeyhole, QrCode } from "lucide-react";
 import { Badge } from "@dsc-hunt/ui/components/badge";
 import { Button } from "@dsc-hunt/ui/components/button";
 import { Card, CardContent } from "@dsc-hunt/ui/components/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@dsc-hunt/ui/components/dialog";
 import { Input } from "@dsc-hunt/ui/components/input";
 import { cn } from "@dsc-hunt/ui/lib/utils";
 import type { EventStatus, RiddleCard, RiddlesResponse } from "@dsc-hunt/types";
@@ -37,6 +44,7 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
   const [incorrect, setIncorrect] = useState<string | null>(null);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState<number | null>(null);
   const connectedOnce = useRef(false);
 
   const refetch = useCallback(async () => {
@@ -54,11 +62,17 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
   // keep the text we have and fetch it if a newly revealed card needs it.
   const onTeamProgress = useCallback(
     (msg: TeamProgressMessage) => {
-      const riddles = msg.riddles.map(({ position, status }) => ({
-        position,
-        status,
-        text: progress.riddles.find((r) => r.position === position)?.text ?? null,
-      }));
+      // Messages leave out text and images: keep what we have; the refetch
+      // below fills in newly revealed cards.
+      const riddles = msg.riddles.map(({ position, status }) => {
+        const known = progress.riddles.find((r) => r.position === position);
+        return {
+          position,
+          status,
+          text: known?.text ?? null,
+          hasImage: known?.hasImage ?? false,
+        };
+      });
       setProgress({ ...progress, riddles, activeRiddle: msg.activeRiddle });
       setAnswer("");
       // A teammate solved or scanned: drop any cooldown left from the old riddle.
@@ -150,6 +164,11 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
     }
   }
 
+  /** Stable route; the API redirects to a short-lived signed URL. */
+  function imageSrc(position: number) {
+    return `/api/events/${encodeURIComponent(progress.eventId)}/riddles/${position}/image`;
+  }
+
   function renderCard(riddle: RiddleCard, index: number) {
     // The active riddle stays flipped from reveal until its QR code is scanned.
     const isFlipped = progress.activeRiddle === riddle.position;
@@ -233,6 +252,22 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
                 </div>
               ) : isFlipped ? (
                 <>
+                  {riddle.hasImage ? (
+                    <button
+                      type="button"
+                      onClick={() => setZoomedImage(riddle.position)}
+                      className="mb-3 overflow-hidden rounded-lg border"
+                      aria-label={`Enlarge the picture for riddle ${index + 1}`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element -- signed URL via redirect, not optimizable */}
+                      <img
+                        src={imageSrc(riddle.position)}
+                        alt={`Picture for riddle ${index + 1}`}
+                        loading="lazy"
+                        className="max-h-28 w-full object-contain"
+                      />
+                    </button>
+                  ) : null}
                   <p className="mb-4 flex-1 text-sm leading-relaxed">
                     {riddle.text ?? (
                       <span className="text-muted-foreground">
@@ -294,6 +329,28 @@ export function RiddleBoard({ initialProgress, accessToken, initialStatus }: Rid
         Solve a riddle, head to its location, and scan the QR code to confirm your visit. Your
         next riddle unlocks after each scan.
       </p>
+
+      <Dialog
+        open={zoomedImage !== null}
+        onOpenChange={(open) => !open && setZoomedImage(null)}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ImageIcon className="h-4 w-4" /> Riddle {zoomedImage}
+            </DialogTitle>
+            <DialogDescription>Pinch or zoom in for detail.</DialogDescription>
+          </DialogHeader>
+          {zoomedImage !== null ? (
+            // eslint-disable-next-line @next/next/no-img-element -- signed URL via redirect
+            <img
+              src={imageSrc(zoomedImage)}
+              alt={`Picture for riddle ${zoomedImage}`}
+              className="max-h-[70vh] w-full object-contain"
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -1,13 +1,23 @@
-import type { Event, EventStatus } from "@dsc-hunt/types";
+import type { Event, EventStats, EventStatus } from "@dsc-hunt/types";
 import { HttpError } from "../../lib/http-error";
 import type { EventHub } from "../realtime/event-hub";
+import type { StatsPublisher } from "../stats/stats.publisher";
+import type { StatsRepository } from "../stats/stats.repository";
 import type { EventsRepository } from "./events.repository";
 
 export class EventsService {
   constructor(
     private readonly repository: EventsRepository,
-    private readonly hub: EventHub
+    private readonly hub: EventHub,
+    private readonly stats: StatsRepository,
+    private readonly statsPublisher: StatsPublisher | null = null
   ) {}
+
+  /** Dashboard counters + start readiness. Staff only (enforced by the route). */
+  async getStats(id: string): Promise<EventStats> {
+    await this.getById(id);
+    return this.stats.forEvent(id);
+  }
 
   async getCurrent(): Promise<Event> {
     const event = await this.repository.findCurrent();
@@ -21,8 +31,43 @@ export class EventsService {
     return event;
   }
 
-  /** not_started -> live. Sets started_at and broadcasts to connected clients. */
-  start(id: string): Promise<Event> {
+  /**
+   * Sets the venue shown to players before the start. A blank name clears it
+   * (and the details). Locked once the hunt has started.
+   */
+  async setStartingLocation(
+    id: string,
+    name: string,
+    details: string | null | undefined
+  ): Promise<Event> {
+    const trimmedName = name.trim() || null;
+    const trimmedDetails = trimmedName ? details?.trim() || null : null;
+
+    const updated = await this.repository.setStartingLocation(id, trimmedName, trimmedDetails);
+    if (updated) {
+      // "Starting location set" is a start blocker on the dashboard.
+      await this.statsPublisher?.publish(id);
+      return updated;
+    }
+
+    const existing = await this.repository.findById(id);
+    if (!existing) throw new HttpError(404, "Event not found");
+    throw new HttpError(409, "The starting location is locked once the hunt starts");
+  }
+
+  /**
+   * not_started -> live. Refused (409) until every start blocker is cleared:
+   * all riddles configured, starting location set, at least one team.
+   * Sets started_at and broadcasts to connected clients.
+   */
+  async start(id: string): Promise<Event> {
+    const event = await this.getById(id);
+    if (event.status === "not_started") {
+      const { startBlockers } = await this.stats.forEvent(id);
+      if (startBlockers.length > 0) {
+        throw new HttpError(409, `Can't start yet: ${startBlockers.join("; ")}`);
+      }
+    }
     return this.transition(id, "not_started", "live");
   }
 

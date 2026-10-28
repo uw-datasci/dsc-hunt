@@ -12,9 +12,21 @@ const eventObject = {
     startedAt: nullableString,
     endedAt: nullableString,
     teamSizeCap: { type: "integer" },
+    startingLocationName: nullableString,
+    startingLocationDetails: nullableString,
     createdAt: { type: "string" },
   },
-  required: ["id", "name", "status", "startedAt", "endedAt", "teamSizeCap", "createdAt"],
+  required: [
+    "id",
+    "name",
+    "status",
+    "startedAt",
+    "endedAt",
+    "teamSizeCap",
+    "startingLocationName",
+    "startingLocationDetails",
+    "createdAt",
+  ],
 } as const;
 
 const eventEnvelope = {
@@ -35,7 +47,38 @@ const idParams = {
   required: ["id"],
 } as const;
 
+const statsObject = {
+  type: "object",
+  properties: {
+    teamCount: { type: "integer" },
+    playerCount: { type: "integer" },
+    configuredRiddles: { type: "integer" },
+    totalRiddles: { type: "integer" },
+    scanCount: { type: "integer" },
+    startingLocationSet: { type: "boolean" },
+    startBlockers: { type: "array", items: { type: "string" } },
+  },
+  required: [
+    "teamCount",
+    "playerCount",
+    "configuredRiddles",
+    "totalRiddles",
+    "scanCount",
+    "startingLocationSet",
+    "startBlockers",
+  ],
+} as const;
+
 export const eventsSchema = {
+  getStats: {
+    tags: ["events", "admin"],
+    summary: "Dashboard counters and start readiness (start blockers). Staff only.",
+    params: idParams,
+    response: {
+      200: { type: "object", properties: { stats: statsObject }, required: ["stats"] },
+      404: errorObject,
+    },
+  },
   getCurrent: {
     tags: ["events"],
     summary: "The current hunt (newest event)",
@@ -49,8 +92,26 @@ export const eventsSchema = {
   },
   start: {
     tags: ["events", "admin"],
-    summary: "Start the hunt (not_started -> live). Staff only.",
+    summary:
+      "Start the hunt (not_started -> live). Staff only. 409 until all riddles are set up, " +
+      "the starting location is set, and at least one team has registered.",
     params: idParams,
+    response: { 200: eventEnvelope, 404: errorObject, 409: errorObject },
+  },
+  setStartingLocation: {
+    tags: ["events", "admin"],
+    summary:
+      "Set the starting location (event venue). Staff only, before the start. A blank name clears it.",
+    params: idParams,
+    body: {
+      type: "object",
+      required: ["name"],
+      additionalProperties: false,
+      properties: {
+        name: { type: "string", maxLength: 100 },
+        details: { type: ["string", "null"], maxLength: 500 },
+      },
+    },
     response: { 200: eventEnvelope, 404: errorObject, 409: errorObject },
   },
   end: {

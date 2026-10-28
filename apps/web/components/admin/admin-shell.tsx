@@ -1,11 +1,5 @@
 import Link from "next/link";
-
-const NAV_LINKS = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/teams", label: "Teams" },
-  { href: "/admin/riddles", label: "Riddles" },
-  { href: "/admin/live", label: "Live" },
-] as const;
+import { AdminNav } from "@/components/admin/admin-nav";
 
 interface AdminShellProps {
   title: string;
@@ -22,14 +16,7 @@ export function AdminShell({ title, actions, children }: Readonly<AdminShellProp
             <Link href="/admin" className="font-heading text-lg tracking-wide text-primary">
               DSC Hunt admin
             </Link>
-            {/* TODO: highlight the active tab (needs usePathname in a client nav). */}
-            <nav className="flex items-center gap-4 text-sm text-muted-foreground">
-              {NAV_LINKS.map((link) => (
-                <Link key={link.href} href={link.href} className="hover:text-foreground">
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
+            <AdminNav />
           </div>
           <Link href="/" className="text-xs text-muted-foreground hover:text-foreground">
             ← Back to site

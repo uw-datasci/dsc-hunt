@@ -7,6 +7,8 @@ export function pointsForVisit(visited: number): number {
 }
 
 export interface ScoredVisit {
+  /** Points this visit earned (its tier at the location). */
+  points: number;
   totalScore: number;
   lastScoredAt: string;
 }
@@ -17,7 +19,7 @@ interface LocationRow {
 
 interface TeamScoreRow {
   total_score: number;
-  last_scored_at: string;
+  last_scored_at: Date | string;
 }
 
 export class ScoringRepository {
@@ -56,15 +58,17 @@ export class ScoringRepository {
          SET total_score = total_score + $2,
              last_scored_at = now()
          WHERE team_id = $1
-         RETURNING total_score, last_scored_at::text AS last_scored_at`,
+         RETURNING total_score, last_scored_at`,
         [teamId, points]
       )
     )[0];
     if (!team) throw new Error("Team not found");
 
     return {
+      points,
       totalScore: team.total_score,
-      lastScoredAt: team.last_scored_at,
+      // ISO, matching the leaderboard's `lastScoredAt`, so clients can compare them.
+      lastScoredAt: new Date(team.last_scored_at).toISOString(),
     };
   }
 }

@@ -16,6 +16,7 @@ import { registerEnv } from "./env";
 import { registerHelmet } from "./helmet";
 import { registerRateLimit } from "./rate-limit";
 import { registerRealtime } from "./realtime";
+import { registerStorage } from "./storage";
 import { registerSwagger } from "./swagger";
 
 export async function registerPlugins(fastify: FastifyInstance) {
@@ -25,6 +26,7 @@ export async function registerPlugins(fastify: FastifyInstance) {
   await registerAuth(fastify);
   await registerRateLimit(fastify);
   await registerRealtime(fastify);
+  await registerStorage(fastify);
   // Insert new plugins here
 
   if (fastify.config.NODE_ENV !== "production") await registerSwagger(fastify);

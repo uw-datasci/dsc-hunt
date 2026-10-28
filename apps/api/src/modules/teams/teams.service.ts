@@ -1,5 +1,6 @@
 import {
   isStaffRole,
+  type AdminTeam,
   type AuthenticatedUser,
   type Event,
   type Team,
@@ -9,6 +10,7 @@ import {
 import { HttpError } from "../../lib/http-error";
 import type { EventsRepository } from "../events/events.repository";
 import type { EventHub } from "../realtime/event-hub";
+import type { StatsPublisher } from "../stats/stats.publisher";
 import type { TeamsRepository } from "./teams.repository";
 
 const CODE_MIN = 10_000;
@@ -45,7 +47,8 @@ export class TeamsService {
   constructor(
     private readonly repository: TeamsRepository,
     private readonly events: EventsRepository,
-    private readonly hub: EventHub
+    private readonly hub: EventHub,
+    private readonly stats: StatsPublisher | null = null
   ) {}
 
   async create(eventId: string, user: AuthenticatedUser, name?: string): Promise<Team> {
@@ -65,6 +68,7 @@ export class TeamsService {
           creatorUserId: user.id,
           creatorDisplayName: displayNameFor(user),
         });
+        this.hub.setUserTeam(eventId, user.id, team.id);
         await this.publishRoster(eventId, team.id);
         return team;
       } catch (error) {
@@ -115,6 +119,8 @@ export class TeamsService {
     if (result === "missing") throw new HttpError(404, "No team with that code");
     if (result === "full") throw new HttpError(409, "Team is full");
 
+    // Point the joiner's open streams at the team first, so they get the roster too.
+    this.hub.setUserTeam(eventId, user.id, team.id);
     await this.publishRoster(eventId, team.id);
     return team;
   }
@@ -129,6 +135,7 @@ export class TeamsService {
     }
 
     await this.repository.removeMember(teamId, userId);
+    this.hub.setUserTeam(team.eventId, userId, null);
     await this.publishRoster(team.eventId, teamId);
   }
 
@@ -153,6 +160,73 @@ export class TeamsService {
     return { ...team, members: await this.repository.listMembers(team.id) };
   }
 
+  // --- Admin (staff-only routes) ---
+
+  async listForAdmin(eventId: string): Promise<AdminTeam[]> {
+    await this.requireEvent(eventId);
+    return this.repository.listForEventAdmin(eventId);
+  }
+
+  /**
+   * Removes a player from a team, in any event status. Before the start an
+   * emptied team is deleted (like players leaving); once live it's kept, so
+   * its scans and leaderboard place survive.
+   */
+  async adminRemoveMember(eventId: string, teamId: string, userId: string): Promise<void> {
+    const event = await this.requireEvent(eventId);
+    await this.requireTeamInEvent(eventId, teamId);
+
+    const removed = await this.repository.removeMember(
+      teamId,
+      userId,
+      event.status === "not_started"
+    );
+    if (!removed) throw new HttpError(404, "That player isn't on this team");
+
+    // Roster first, while the removed player's streams still follow the team,
+    // so their lobby sees they're gone. Then stop sending them team messages.
+    await this.publishRoster(eventId, teamId);
+    this.hub.setUserTeam(eventId, userId, null);
+  }
+
+  /** Deletes a team and its memberships. Only before the start. */
+  async adminDeleteTeam(eventId: string, teamId: string): Promise<void> {
+    const event = await this.requireEvent(eventId);
+    await this.requireTeamInEvent(eventId, teamId);
+    if (event.status !== "not_started") {
+      throw new HttpError(409, "Teams can only be deleted before the hunt starts");
+    }
+
+    const members = await this.repository.listMembers(teamId);
+    // Tell open lobbies the team is empty before cutting their streams off.
+    this.hub.publishToTeam(eventId, teamId, {
+      type: "team_members",
+      eventId,
+      teamId,
+      members: [],
+    });
+    await this.repository.delete(teamId);
+    for (const member of members) this.hub.setUserTeam(eventId, member.userId, null);
+    await this.stats?.publish(eventId);
+  }
+
+  /** Renames a team in any status (e.g. moderating an inappropriate name). */
+  async adminRename(eventId: string, teamId: string, name: string): Promise<Team> {
+    const trimmed = name.trim();
+    if (!trimmed) throw new HttpError(400, "Team name can't be blank");
+    await this.requireEvent(eventId);
+    await this.requireTeamInEvent(eventId, teamId);
+    const team = await this.repository.rename(teamId, trimmed);
+    if (!team) throw new HttpError(404, "Team not found");
+    return team;
+  }
+
+  private async requireTeamInEvent(eventId: string, teamId: string): Promise<Team> {
+    const team = await this.repository.findById(teamId);
+    if (!team || team.eventId !== eventId) throw new HttpError(404, "Team not found");
+    return team;
+  }
+
   private async requireEvent(eventId: string): Promise<Event> {
     const event = await this.events.findById(eventId);
     if (!event) throw new HttpError(404, "Event not found");
@@ -166,13 +240,10 @@ export class TeamsService {
     return event;
   }
 
-  /** Tells the team's lobby who's on it, and the admin dashboard the new counts. */
+  /** Tells the team's lobby who's on it (team + staff), and staff the new counts. */
   private async publishRoster(eventId: string, teamId: string): Promise<void> {
-    const [members, stats] = await Promise.all([
-      this.repository.listMembers(teamId),
-      this.repository.stats(eventId),
-    ]);
-    this.hub.publish(eventId, { type: "team_members", eventId, teamId, members });
-    this.hub.publish(eventId, { type: "event_stats", eventId, ...stats });
+    const members = await this.repository.listMembers(teamId);
+    this.hub.publishToTeam(eventId, teamId, { type: "team_members", eventId, teamId, members });
+    await this.stats?.publish(eventId);
   }
 }

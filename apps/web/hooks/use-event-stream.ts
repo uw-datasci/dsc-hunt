@@ -9,18 +9,40 @@ const MAX_BACKOFF_MS = 30_000;
 
 export type EventStatusMessage = ServerMessage & { type: "event_status" };
 export type TeamProgressMessage = ServerMessage & { type: "team_progress" };
+export type TeamMembersMessage = ServerMessage & { type: "team_members" };
+export type ScoreUpdateMessage = ServerMessage & { type: "score_update" };
+export type EventStatsMessage = ServerMessage & { type: "event_stats" };
 
 interface UseEventStreamOptions {
   /** Pass null to stay disconnected (e.g. no event yet). */
   eventId: string | null;
-  /** Supabase access token from `getAccessToken()`; null stays disconnected. */
+  /**
+   * Supabase access token from `getAccessToken()`. Null stays disconnected
+   * unless `allowAnonymous` is set.
+   */
   accessToken: string | null;
+  /**
+   * Connect without a token too (public pages like the leaderboard). The
+   * server then sends only event-wide messages: status and scores.
+   */
+  allowAnonymous?: boolean;
   /** Server-rendered status, shown until the connect-time snapshot arrives. */
   initialStatus?: EventStatus | null;
   onEventStatus?: (msg: EventStatusMessage) => void;
-  /** Only `team_progress` messages for this team reach `onTeamProgress`. */
+  /** Only `team_progress` / `team_members` messages for this team reach the callbacks below. */
   teamId?: string | null;
   onTeamProgress?: (msg: TeamProgressMessage) => void;
+  /** A player joined or left this team. */
+  onTeamMembers?: (msg: TeamMembersMessage) => void;
+  /** Any team's score changed (leaderboard). */
+  onScoreUpdate?: (msg: ScoreUpdateMessage) => void;
+  /** Dashboard counters + start readiness. The server only sends these to staff. */
+  onEventStats?: (msg: EventStatsMessage) => void;
+  /**
+   * Every message, unfiltered (after the typed callbacks). For staff views that
+   * react to any team's activity, e.g. refetching the admin live view.
+   */
+  onMessage?: (msg: ServerMessage) => void;
 }
 
 /**
@@ -40,10 +62,15 @@ interface UseEventStreamOptions {
 export function useEventStream({
   eventId,
   accessToken,
+  allowAnonymous = false,
   initialStatus = null,
   onEventStatus,
   teamId = null,
   onTeamProgress,
+  onTeamMembers,
+  onScoreUpdate,
+  onEventStats,
+  onMessage,
 }: UseEventStreamOptions): EventStatus | null {
   const [status, setStatus] = useState<EventStatus | null>(initialStatus);
 
@@ -51,16 +78,24 @@ export function useEventStream({
   // connection effect - callers would otherwise reconnect on every render.
   const onEventStatusRef = useRef(onEventStatus);
   const onTeamProgressRef = useRef(onTeamProgress);
+  const onTeamMembersRef = useRef(onTeamMembers);
+  const onScoreUpdateRef = useRef(onScoreUpdate);
+  const onEventStatsRef = useRef(onEventStats);
+  const onMessageRef = useRef(onMessage);
   useEffect(() => {
     onEventStatusRef.current = onEventStatus;
     onTeamProgressRef.current = onTeamProgress;
-  }, [onEventStatus, onTeamProgress]);
+    onTeamMembersRef.current = onTeamMembers;
+    onScoreUpdateRef.current = onScoreUpdate;
+    onEventStatsRef.current = onEventStats;
+    onMessageRef.current = onMessage;
+  }, [onEventStatus, onTeamProgress, onTeamMembers, onScoreUpdate, onEventStats, onMessage]);
 
   useEffect(() => {
-    if (!eventId || !accessToken) return;
+    if (!eventId || (!accessToken && !allowAnonymous)) return;
 
     const url = new URL(`/events/${encodeURIComponent(eventId)}/stream`, clientConfig.apiUrl);
-    url.searchParams.set("access_token", accessToken);
+    if (accessToken) url.searchParams.set("access_token", accessToken);
 
     let source: EventSource | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -89,12 +124,22 @@ export function useEventStream({
             onEventStatusRef.current?.(msg);
             break;
           case "team_progress":
-            // Progress for every team goes to the whole event; keep only ours.
+            // The server only sends our team's progress; the check is a second guard.
             if (teamId && msg.teamId === teamId) onTeamProgressRef.current?.(msg);
+            break;
+          case "team_members":
+            if (teamId && msg.teamId === teamId) onTeamMembersRef.current?.(msg);
+            break;
+          case "score_update":
+            onScoreUpdateRef.current?.(msg);
+            break;
+          case "event_stats":
+            onEventStatsRef.current?.(msg);
             break;
           default:
             break;
         }
+        onMessageRef.current?.(msg);
       };
 
       es.onerror = () => {
@@ -113,7 +158,7 @@ export function useEventStream({
       if (retryTimer) clearTimeout(retryTimer);
       source?.close();
     };
-  }, [eventId, accessToken, teamId]);
+  }, [eventId, accessToken, allowAnonymous, teamId]);
 
   return status;
 }

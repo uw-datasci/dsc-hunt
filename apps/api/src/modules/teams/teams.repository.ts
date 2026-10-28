@@ -1,6 +1,6 @@
 import { query, queryOne, withTransaction } from "@dsc-hunt/db";
-import type { Team, TeamMember } from "@dsc-hunt/types";
-import type { AddMemberResult, EventStatsRow, TeamMemberRow, TeamRow } from "./teams.types";
+import type { AdminTeam, Team, TeamMember } from "@dsc-hunt/types";
+import type { AddMemberResult, AdminTeamRow, TeamMemberRow, TeamRow } from "./teams.types";
 
 const TEAM_COLUMNS = `teams.team_id, teams.event_id, teams.code, teams.team_name, teams.created_at`;
 
@@ -126,32 +126,64 @@ export class TeamsRepository {
   }
 
   /**
-   * Removes a member and deletes the team if nobody is left. Locks the team
-   * row like `addMember`, so a join can't land on a team being deleted.
+   * Removes a member and, by default, deletes the team if nobody is left.
+   * Locks the team row like `addMember`, so a join can't land on a team being
+   * deleted. Returns whether the user was a member.
+   *
+   * Pass `deleteIfEmpty: false` once the hunt is live: deleting the team would
+   * also delete its scans (and its place on the leaderboard).
    */
-  removeMember(teamId: string, userId: string): Promise<void> {
+  removeMember(teamId: string, userId: string, deleteIfEmpty = true): Promise<boolean> {
     return withTransaction(async (tx) => {
       await tx.query(`SELECT team_id FROM teams WHERE team_id = $1 FOR UPDATE`, [teamId]);
-      await tx.query(`DELETE FROM team_members WHERE team_id = $1 AND user_id = $2`, [
-        teamId,
-        userId,
-      ]);
-      await tx.query(
-        `DELETE FROM teams
-         WHERE team_id = $1
-           AND NOT EXISTS (SELECT 1 FROM team_members WHERE team_id = $1)`,
-        [teamId]
+      const removed = await tx.query(
+        `DELETE FROM team_members WHERE team_id = $1 AND user_id = $2 RETURNING user_id`,
+        [teamId, userId]
       );
+      if (deleteIfEmpty) {
+        await tx.query(
+          `DELETE FROM teams
+           WHERE team_id = $1
+             AND NOT EXISTS (SELECT 1 FROM team_members WHERE team_id = $1)`,
+          [teamId]
+        );
+      }
+      return removed.length > 0;
     });
   }
 
-  async stats(eventId: string): Promise<{ teamCount: number; playerCount: number }> {
-    const row = await queryOne<EventStatsRow>(
-      `SELECT
-         (SELECT count(*) FROM teams WHERE event_id = $1)::integer AS team_count,
-         (SELECT count(*) FROM team_members WHERE event_id = $1)::integer AS player_count`,
+  /** Every team in an event with member / scan counts, oldest first (admin view). */
+  async listForEventAdmin(eventId: string): Promise<AdminTeam[]> {
+    const rows = await query<AdminTeamRow>(
+      `SELECT ${TEAM_COLUMNS},
+              teams.total_score,
+              (SELECT count(*) FROM team_members WHERE team_members.team_id = teams.team_id)::integer
+                AS member_count,
+              (SELECT count(*) FROM visits WHERE visits.team_id = teams.team_id)::integer AS found
+       FROM teams
+       WHERE teams.event_id = $1
+       ORDER BY teams.created_at ASC, teams.team_id ASC`,
       [eventId]
     );
-    return { teamCount: row?.team_count ?? 0, playerCount: row?.player_count ?? 0 };
+    return rows.map((row) => ({
+      ...TeamsRepository.rowToTeam(row),
+      memberCount: row.member_count,
+      found: row.found,
+      totalScore: row.total_score,
+    }));
+  }
+
+  async rename(teamId: string, name: string): Promise<Team | null> {
+    const row = await queryOne<TeamRow>(
+      `UPDATE teams SET team_name = $2 WHERE team_id = $1
+       RETURNING team_id, event_id, code, team_name, created_at`,
+      [teamId, name]
+    );
+    return row ? TeamsRepository.rowToTeam(row) : null;
+  }
+
+  /** Deletes a team; its members (and any visits) go with it via cascades. */
+  async delete(teamId: string): Promise<void> {
+    await query(`DELETE FROM teams WHERE team_id = $1`, [teamId]);
   }
 }

@@ -4,21 +4,17 @@ import type { LeaderboardRow } from "./leaderboard.types";
 export class LeaderboardRepository {
   /**
    * Teams in an event, best first. Ties on score go to the team that reached
-   * it first (earliest latest visit); teams with no visits sort last.
+   * it first (earliest `last_scored_at`, set by scoring); teams that haven't
+   * scored sort last.
    */
   listForEvent(eventId: string): Promise<LeaderboardRow[]> {
     return query<LeaderboardRow>(
-      `SELECT teams.team_id, teams.team_name, teams.total_score
+      `SELECT team_id, team_name, total_score, last_scored_at
        FROM teams
-       LEFT JOIN (
-         SELECT team_id, max(visited_at) AS last_visit_at
-         FROM visits
-         GROUP BY team_id
-       ) AS latest ON latest.team_id = teams.team_id
-       WHERE teams.event_id = $1
-       ORDER BY teams.total_score DESC,
-                latest.last_visit_at ASC NULLS LAST,
-                teams.team_name ASC`,
+       WHERE event_id = $1
+       ORDER BY total_score DESC,
+                last_scored_at ASC NULLS LAST,
+                team_name ASC`,
       [eventId]
     );
   }

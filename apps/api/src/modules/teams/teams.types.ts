@@ -6,15 +6,16 @@ export interface TeamRow {
   created_at: string;
 }
 
+export interface AdminTeamRow extends TeamRow {
+  total_score: number;
+  member_count: number;
+  found: number;
+}
+
 export interface TeamMemberRow {
   user_id: string;
   display_name: string;
   joined_at: string;
-}
-
-export interface EventStatsRow {
-  team_count: number;
-  player_count: number;
 }
 
 export type AddMemberResult = "added" | "full" | "missing";
@@ -34,4 +35,17 @@ export interface TeamParams {
 
 export interface CreateTeamBody {
   name?: string;
+}
+
+export interface AdminTeamParams {
+  id: string;
+  teamId: string;
+}
+
+export interface AdminMemberParams extends AdminTeamParams {
+  userId: string;
+}
+
+export interface RenameTeamBody {
+  name: string;
 }
