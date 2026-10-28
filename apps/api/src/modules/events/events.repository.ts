@@ -22,6 +22,29 @@ export class EventsRepository {
     return row ? EventsRepository.rowToEvent(row) : null;
   }
 
+  /**
+   * Inserts a new not_started event when no other open hunt exists. Returns null
+   * when blocked or on a concurrent-create unique violation.
+   */
+  async create(name: string, teamSizeCap: number): Promise<Event | null> {
+    try {
+      const rows = await query<EventRow>(
+        `INSERT INTO events (name, team_size_cap)
+         SELECT $1, $2
+         WHERE NOT EXISTS (SELECT 1 FROM events WHERE status <> 'ended')
+         RETURNING *`,
+        [name, teamSizeCap]
+      );
+      const row = rows[0];
+      return row ? EventsRepository.rowToEvent(row) : null;
+    } catch (err: unknown) {
+      const code =
+        err && typeof err === "object" && "code" in err ? String(err.code) : "";
+      if (code === "23505") return null;
+      throw err;
+    }
+  }
+
   /** The newest event. The app runs one hunt at a time. */
   async findCurrent(): Promise<Event | null> {
     const row = await queryOne<EventRow>(

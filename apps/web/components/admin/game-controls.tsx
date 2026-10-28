@@ -18,6 +18,7 @@ import {
 } from "@dsc-hunt/ui/components/dialog";
 import { cn } from "@dsc-hunt/ui/lib/utils";
 import { useAdminLive } from "@/components/admin/admin-live";
+import { CreateEventDialog } from "@/components/admin/create-event-dialog";
 
 const STATUS_LABEL: Record<EventStatus, string> = {
   not_started: "Not started",
@@ -105,6 +106,7 @@ export function GameControls() {
           End hunt
         </Button>
       ) : null}
+      {status === "ended" ? <CreateEventDialog /> : null}
 
       <Dialog
         open={dialog === "start"}

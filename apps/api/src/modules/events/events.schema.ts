@@ -70,6 +70,25 @@ const statsObject = {
 } as const;
 
 export const eventsSchema = {
+  create: {
+    tags: ["events", "admin"],
+    summary:
+      "Create a new hunt. Staff only. Allowed when every existing event has ended (or there are none).",
+    body: {
+      type: "object",
+      required: ["name"],
+      additionalProperties: false,
+      properties: {
+        name: { type: "string", minLength: 1, maxLength: 100 },
+        teamSizeCap: { type: "integer", minimum: 1, maximum: 20 },
+      },
+    },
+    response: {
+      201: eventEnvelope,
+      400: errorObject,
+      409: errorObject,
+    },
+  },
   getStats: {
     tags: ["events", "admin"],
     summary: "Dashboard counters and start readiness (start blockers). Staff only.",

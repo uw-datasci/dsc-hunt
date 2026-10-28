@@ -10,6 +10,19 @@ export class EventsController {
     this.end = this.end.bind(this);
     this.setStartingLocation = this.setStartingLocation.bind(this);
     this.getStats = this.getStats.bind(this);
+    this.create = this.create.bind(this);
+  }
+
+  create(request: FastifyRequest, reply: FastifyReply) {
+    const { name, teamSizeCap = 4 } = request.body as {
+      name: string;
+      teamSizeCap?: number;
+    };
+    return handle(
+      reply,
+      async () => ({ event: await this.service.create(name, teamSizeCap) }),
+      201
+    );
   }
 
   getStats(request: FastifyRequest, reply: FastifyReply) {

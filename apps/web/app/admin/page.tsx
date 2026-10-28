@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { EventStats } from "@dsc-hunt/types";
 import { AdminLiveProvider } from "@/components/admin/admin-live";
 import { AdminShell } from "@/components/admin/admin-shell";
+import { CreateEventDialog } from "@/components/admin/create-event-dialog";
 import { DashboardStats } from "@/components/admin/dashboard-stats";
 import { GameControls } from "@/components/admin/game-controls";
 import { proxyApiJson } from "@/lib/api/proxy";
@@ -49,9 +50,12 @@ export default async function AdminHomePage() {
       <AdminShell
         title="Dashboard"
         actions={
-          <p className="text-sm text-muted-foreground">
-            No event found. Check the API is running and migrations have been applied.
-          </p>
+          <div className="flex flex-col items-end gap-1">
+            <CreateEventDialog />
+            <p className="text-xs text-muted-foreground">
+              If creation fails, check the API is running and migrations are applied.
+            </p>
+          </div>
         }
       >
         <SectionLinks />
@@ -66,6 +70,7 @@ export default async function AdminHomePage() {
 
   return (
     <AdminLiveProvider
+      key={event.id}
       event={event}
       initialStats={data?.stats ?? null}
       accessToken={accessToken}

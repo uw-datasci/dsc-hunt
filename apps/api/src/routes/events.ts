@@ -40,6 +40,12 @@ const eventsRoutes: FastifyPluginAsync = async (fastify) => {
   );
   const auth = fastify.requireAuth;
 
+  fastify.post(
+    "/events",
+    { schema: eventsSchema.create, preHandler: fastify.requireAdmin },
+    controller.create
+  );
+
   // Public: status gates the home page and /riddles, and the logged-out
   // leaderboard needs the current event too.
   fastify.get("/events/current", { schema: eventsSchema.getCurrent }, controller.getCurrent);

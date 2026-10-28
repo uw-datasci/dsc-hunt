@@ -31,6 +31,17 @@ export class EventsService {
     return event;
   }
 
+  /** Staff only. Allowed when every existing event has ended (or there are none). */
+  async create(name: string, teamSizeCap: number): Promise<Event> {
+    const trimmed = name.trim();
+    if (!trimmed) throw new HttpError(400, "Event name is required");
+    const created = await this.repository.create(trimmed, teamSizeCap);
+    if (!created) {
+      throw new HttpError(409, "Finish the current hunt before creating a new one");
+    }
+    return created;
+  }
+
   /**
    * Sets the venue shown to players before the start. A blank name clears it
    * (and the details). Locked once the hunt has started.
