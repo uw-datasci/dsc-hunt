@@ -9,6 +9,7 @@ const MAX_BACKOFF_MS = 30_000;
 
 export type EventStatusMessage = ServerMessage & { type: "event_status" };
 export type TeamProgressMessage = ServerMessage & { type: "team_progress" };
+export type TeamMembersMessage = ServerMessage & { type: "team_members" };
 
 interface UseEventStreamOptions {
   /** Pass null to stay disconnected (e.g. no event yet). */
@@ -18,9 +19,11 @@ interface UseEventStreamOptions {
   /** Server-rendered status, shown until the connect-time snapshot arrives. */
   initialStatus?: EventStatus | null;
   onEventStatus?: (msg: EventStatusMessage) => void;
-  /** Only `team_progress` messages for this team reach `onTeamProgress`. */
+  /** Only `team_progress` / `team_members` messages for this team reach the callbacks below. */
   teamId?: string | null;
   onTeamProgress?: (msg: TeamProgressMessage) => void;
+  /** A player joined or left this team. */
+  onTeamMembers?: (msg: TeamMembersMessage) => void;
 }
 
 /**
@@ -44,6 +47,7 @@ export function useEventStream({
   onEventStatus,
   teamId = null,
   onTeamProgress,
+  onTeamMembers,
 }: UseEventStreamOptions): EventStatus | null {
   const [status, setStatus] = useState<EventStatus | null>(initialStatus);
 
@@ -51,10 +55,12 @@ export function useEventStream({
   // connection effect - callers would otherwise reconnect on every render.
   const onEventStatusRef = useRef(onEventStatus);
   const onTeamProgressRef = useRef(onTeamProgress);
+  const onTeamMembersRef = useRef(onTeamMembers);
   useEffect(() => {
     onEventStatusRef.current = onEventStatus;
     onTeamProgressRef.current = onTeamProgress;
-  }, [onEventStatus, onTeamProgress]);
+    onTeamMembersRef.current = onTeamMembers;
+  }, [onEventStatus, onTeamProgress, onTeamMembers]);
 
   useEffect(() => {
     if (!eventId || !accessToken) return;
@@ -91,6 +97,9 @@ export function useEventStream({
           case "team_progress":
             // Progress for every team goes to the whole event; keep only ours.
             if (teamId && msg.teamId === teamId) onTeamProgressRef.current?.(msg);
+            break;
+          case "team_members":
+            if (teamId && msg.teamId === teamId) onTeamMembersRef.current?.(msg);
             break;
           default:
             break;

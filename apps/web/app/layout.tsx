@@ -2,6 +2,7 @@ import { Creepster, Geist, Geist_Mono } from "next/font/google";
 
 import "@dsc-hunt/ui/globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@dsc-hunt/ui/components/sonner";
 import { cn } from "@dsc-hunt/ui/lib/utils";
 
 const fontSans = Geist({
@@ -39,7 +40,11 @@ export default function RootLayout({
       )}
     >
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          {children}
+          {/* The site is forced dark; without this sonner follows the OS theme. */}
+          <Toaster theme="dark" position="top-center" richColors />
+        </ThemeProvider>
       </body>
     </html>
   );

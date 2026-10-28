@@ -5,17 +5,14 @@ import { PageShell } from "@/components/shared/page-shell";
 import { proxyApiJson } from "@/lib/api/proxy";
 import { getAccessToken } from "@/lib/auth/session";
 import { getCurrentEvent } from "@/lib/event/current";
-import { getCurrentTeam } from "@/lib/team/session";
+import { getCurrentTeam } from "@/lib/team/current";
 import { RiddleBoard } from "./riddle-board";
 
 export const dynamic = "force-dynamic";
 
 export default async function HuntPage() {
-  const [team, event, accessToken] = await Promise.all([
-    getCurrentTeam(),
-    getCurrentEvent(),
-    getAccessToken(),
-  ]);
+  const event = await getCurrentEvent();
+  const [team, accessToken] = await Promise.all([getCurrentTeam(event), getAccessToken()]);
   if (event?.status === "ended") redirect("/finished");
   if (!team || event?.status !== "live") redirect("/team");
 
