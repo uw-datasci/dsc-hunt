@@ -43,6 +43,30 @@ const answerBody = {
 
 export const riddlesSchema = {
   get: { params: eventParams },
+  teamVisits: {
+    params: eventParams,
+    response: {
+      200: {
+        type: "object",
+        properties: {
+          visits: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                position: { type: "integer" },
+                locationName: { type: "string" },
+                points: { type: "integer" },
+                scannedAt: { type: "string" },
+              },
+              required: ["position", "locationName", "points", "scannedAt"],
+            },
+          },
+        },
+        required: ["visits"],
+      },
+    },
+  },
   getCurrent: {},
   flip: { params: riddleParams },
   image: { params: riddleParams },

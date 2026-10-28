@@ -22,6 +22,13 @@ export class RiddlesController {
     this.scan = this.scan.bind(this);
     this.scanCurrent = this.scanCurrent.bind(this);
     this.image = this.image.bind(this);
+    this.teamVisits = this.teamVisits.bind(this);
+  }
+
+  teamVisits(request: FastifyRequest<{ Params: EventParams }>, reply: FastifyReply) {
+    return handle(reply, async () => ({
+      visits: await this.service.teamVisits(request.params.id, request.user!.id),
+    }));
   }
 
   /** 302 to a short-lived signed URL for a revealed card's image. */

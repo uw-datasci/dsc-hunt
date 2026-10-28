@@ -1,5 +1,5 @@
 import { withTransaction } from "@dsc-hunt/db";
-import type { RiddleStatus, RiddlesResponse, ScanResponse } from "@dsc-hunt/types";
+import type { RiddleStatus, RiddlesResponse, ScanResponse, TeamVisit } from "@dsc-hunt/types";
 import { HttpError } from "../../lib/http-error";
 import type { EventsRepository } from "../events/events.repository";
 import type { EventHub } from "../realtime/event-hub";
@@ -40,6 +40,13 @@ export class RiddlesService {
     private readonly storage: ObjectStorage | null = null,
     private readonly stats: StatsPublisher | null = null
   ) {}
+
+  /** The caller's team's scans (location + points), for the results screen. Any status. */
+  async teamVisits(eventId: string, userId: string): Promise<TeamVisit[]> {
+    await this.requireEvent(eventId);
+    const teamId = await this.requireTeam(eventId, userId);
+    return this.repository.findTeamVisits(teamId);
+  }
 
   /**
    * A short-lived signed URL for a riddle's image, only for a card the

@@ -70,3 +70,11 @@ export interface AdminProgressResponse {
   teams: AdminTeamProgress[];
   recentScans: AdminScan[];
 }
+
+/** One location the player's team found, for the results screen. */
+export interface TeamVisit {
+  position: number;
+  locationName: string;
+  points: number;
+  scannedAt: string;
+}

@@ -97,6 +97,12 @@ const eventsRoutes: FastifyPluginAsync = async (fastify) => {
     { schema: riddlesSchema.get, preHandler: auth },
     riddles.get
   );
+  // The caller's team's scans with points, for the results screen.
+  fastify.get<{ Params: EventParams }>(
+    "/events/:id/team/visits",
+    { schema: riddlesSchema.teamVisits, preHandler: auth },
+    riddles.teamVisits
+  );
   fastify.get<{ Params: RiddleParams }>(
     "/events/:id/riddles/:position/image",
     { schema: riddlesSchema.image, preHandler: auth },

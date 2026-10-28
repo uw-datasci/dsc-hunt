@@ -1,4 +1,5 @@
 import { query, queryOne, type DatabaseTransaction } from "@dsc-hunt/db";
+import type { TeamVisit } from "@dsc-hunt/types";
 import type {
   AnswerAttemptRow,
   LocationRow,
@@ -150,6 +151,29 @@ export class RiddlesRepository {
       [teamId, position]
     );
     return row?.image_key ?? null;
+  }
+
+  /** The locations a team found, in the order it found them. */
+  async findTeamVisits(teamId: string): Promise<TeamVisit[]> {
+    const rows = await query<{
+      position: number;
+      location_name: string;
+      points: number;
+      visited_at: Date | string;
+    }>(
+      `SELECT locations.position, locations.name AS location_name, visits.points, visits.visited_at
+       FROM visits
+       JOIN locations ON locations.location_id = visits.location_id
+       WHERE visits.team_id = $1
+       ORDER BY visits.visited_at ASC, visits.visit_id ASC`,
+      [teamId]
+    );
+    return rows.map((row) => ({
+      position: Number(row.position),
+      locationName: row.location_name,
+      points: row.points,
+      scannedAt: new Date(row.visited_at).toISOString(),
+    }));
   }
 
   /** Accepted answers for a riddle; empty when it isn't configured. */
