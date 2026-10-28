@@ -4,6 +4,7 @@ import { HttpError } from "../../lib/http-error";
 import type { EventsRepository } from "../events/events.repository";
 import type { EventHub } from "../realtime/event-hub";
 import type { ScoringService } from "../scoring/scoring.service";
+import { matchesAnswer } from "./answer-match";
 import type { RiddlesRepository } from "./riddles.repository";
 import type { LocationRow, ProgressRow, TeamStateRow } from "./riddles.types";
 
@@ -92,11 +93,9 @@ export class RiddlesService {
         throw new HttpError(409, "This riddle is no longer active");
       }
 
-      const expectedAnswer = (await this.repository.findAnswer(eventId, position))?.trim();
-      if (!expectedAnswer) throw new HttpError(409, "This riddle is not configured yet");
-      if (answer.trim().toLowerCase() !== expectedAnswer.toLowerCase()) {
-        throw new HttpError(400, "Incorrect answer");
-      }
+      const accepted = await this.repository.findAnswers(eventId, position);
+      if (accepted.length === 0) throw new HttpError(409, "This riddle is not configured yet");
+      if (!matchesAnswer(answer, accepted)) throw new HttpError(400, "Incorrect answer");
 
       if (!(await this.repository.markSolved(teamId, eventId, position))) {
         throw new HttpError(409, "This riddle is no longer active");

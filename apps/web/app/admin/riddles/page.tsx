@@ -1,88 +1,55 @@
+import Link from "next/link";
+import type { AdminRiddle } from "@dsc-hunt/types";
 import { Button } from "@dsc-hunt/ui/components/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@dsc-hunt/ui/components/table";
 import { AdminShell } from "@/components/admin/admin-shell";
+import { RiddlesTable } from "@/components/admin/riddles-table";
 import { StartingLocationEditor } from "@/components/admin/starting-location-editor";
+import { proxyApiJson } from "@/lib/api/proxy";
 import { getCurrentEvent } from "@/lib/event/current";
+import { getRequestOrigin } from "@/lib/request-origin";
 
 export const dynamic = "force-dynamic";
 
-// TODO: replace with real data.
-const PLACEHOLDER_RIDDLES = [
-  {
-    id: "1",
-    riddle: "I hold a thousand stories but never speak…",
-    location: "Location A",
-    code: "abc123",
-  },
-  {
-    id: "2",
-    riddle: "Where caffeine flows and deadlines grow…",
-    location: "Location B",
-    code: "def456",
-  },
-  { id: "3", riddle: "I tick but have no clock…", location: "Location C", code: "ghi789" },
-];
-
 export default async function AdminRiddlesPage() {
   const event = await getCurrentEvent();
+  const [riddlesResult, origin] = await Promise.all([
+    event
+      ? proxyApiJson<{ riddles: AdminRiddle[] }>(
+          `/events/${encodeURIComponent(event.id)}/admin/riddles`,
+          { cache: "no-store" }
+        )
+      : null,
+    getRequestOrigin(),
+  ]);
+  const riddles = riddlesResult?.data?.riddles ?? null;
 
   return (
     <AdminShell
       title="Riddles"
       actions={
-        // TODO: add/edit riddle dialog (riddle text, location name, generated QR code).
-        <Button disabled>Add riddle</Button>
+        riddles?.some((riddle) => riddle.qrIdentifier) ? (
+          <Button asChild variant="outline">
+            <Link href="/admin/riddles/print">Print QR codes</Link>
+          </Button>
+        ) : null
       }
     >
       {event ? (
-        <StartingLocationEditor event={event} />
+        <>
+          <StartingLocationEditor event={event} />
+          {riddles ? (
+            <RiddlesTable event={event} riddles={riddles} origin={origin} />
+          ) : (
+            <p role="alert" className="text-sm text-destructive">
+              {riddlesResult?.error ?? "Couldn't load the riddles."}
+            </p>
+          )}
+        </>
       ) : (
-        <p className="mb-4 text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           No event found. Check the API is running and migrations have been applied.
         </p>
       )}
-
-      <div className="rounded-xl border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">#</TableHead>
-              <TableHead>Riddle</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>QR code</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {PLACEHOLDER_RIDDLES.map((row, index) => (
-              <TableRow key={row.id}>
-                <TableCell className="tabular-nums">{index + 1}</TableCell>
-                <TableCell className="max-w-xs truncate">{row.riddle}</TableCell>
-                <TableCell>{row.location}</TableCell>
-                <TableCell>
-                  {/* TODO: render a real QR code pointing at /scan/<code>, with print/download. */}
-                  <div className="flex size-12 items-center justify-center rounded border border-dashed text-[10px] text-muted-foreground">
-                    QR
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  {/* TODO: edit / delete / reorder. */}
-                  <Button variant="ghost" size="sm" disabled>
-                    Edit
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
     </AdminShell>
   );
 }

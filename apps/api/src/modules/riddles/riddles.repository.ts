@@ -135,12 +135,13 @@ export class RiddlesRepository {
     );
   }
 
-  async findAnswer(eventId: string, position: number): Promise<string | null> {
-    const row = await queryOne<{ answer: string | null }>(
-      `SELECT answer FROM riddles WHERE event_id = $1 AND position = $2`,
+  /** Accepted answers for a riddle; empty when it isn't configured. */
+  async findAnswers(eventId: string, position: number): Promise<string[]> {
+    const row = await queryOne<{ answers: string[] }>(
+      `SELECT answers FROM riddles WHERE event_id = $1 AND position = $2`,
       [eventId, position]
     );
-    return row?.answer ?? null;
+    return row?.answers ?? [];
   }
 
   /** Marks the active riddle solved. Returns false if it was no longer active. */

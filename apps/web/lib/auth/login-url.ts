@@ -1,7 +1,7 @@
 import "server-only";
 
-import { headers } from "next/headers";
 import { clientConfig } from "@/config/client";
+import { getRequestOrigin } from "@/lib/request-origin";
 
 /**
  * `returnTo` is a path on this site. Defaults to the landing page, which
@@ -11,12 +11,6 @@ import { clientConfig } from "@/config/client";
  */
 export async function buildLoginUrl(returnTo = "/"): Promise<string> {
   const loginUrl = new URL("/login", clientConfig.mainSiteUrl);
-  const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "";
-  const protocol =
-    requestHeaders.get("x-forwarded-proto") ??
-    (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
-  const origin = `${protocol}://${host}`;
-  loginUrl.searchParams.set("redirect", new URL(returnTo, origin).toString());
+  loginUrl.searchParams.set("redirect", new URL(returnTo, await getRequestOrigin()).toString());
   return loginUrl.toString();
 }
