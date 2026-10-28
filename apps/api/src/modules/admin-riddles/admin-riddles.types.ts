@@ -6,6 +6,13 @@ export interface AdminRiddleRow {
   answers: string[] | null;
   location_name: string | null;
   qr_identifier: string | null;
+  has_image: boolean;
+}
+
+/** An uploaded file as the controller read it; `truncated` means it hit the size limit. */
+export interface UploadedImage {
+  data: Buffer;
+  truncated: boolean;
 }
 
 export interface EventLockRow {

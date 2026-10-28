@@ -10,8 +10,9 @@ const adminRiddle = {
     answers: { type: "array", items: { type: "string" } },
     locationName: nullableString,
     qrIdentifier: nullableString,
+    hasImage: { type: "boolean" },
   },
-  required: ["position", "text", "answers", "locationName", "qrIdentifier"],
+  required: ["position", "text", "answers", "locationName", "qrIdentifier", "hasImage"],
 } as const;
 
 const errorObject = {
@@ -90,5 +91,37 @@ export const adminRiddlesSchema = {
       404: errorObject,
       409: errorObject,
     },
+  },
+  uploadImage: {
+    tags: ["riddles", "admin"],
+    summary:
+      "Upload the riddle's image (multipart, one file; JPEG/PNG/WebP/GIF, max 5 MB). " +
+      "Replaces any previous image. Staff only, before the start.",
+    consumes: ["multipart/form-data"],
+    params: riddleParams,
+    response: {
+      200: { type: "object", properties: { hasImage: { type: "boolean" } } },
+      400: errorObject,
+      404: errorObject,
+      409: errorObject,
+      413: errorObject,
+      503: errorObject,
+    },
+  },
+  removeImage: {
+    tags: ["riddles", "admin"],
+    summary: "Remove the riddle's image. Staff only, before the start.",
+    params: riddleParams,
+    response: {
+      200: { type: "object", properties: { hasImage: { type: "boolean" } } },
+      404: errorObject,
+      409: errorObject,
+      503: errorObject,
+    },
+  },
+  image: {
+    tags: ["riddles", "admin"],
+    summary: "Redirect (302) to a short-lived signed URL for the riddle's image. Staff only.",
+    params: riddleParams,
   },
 } satisfies Record<string, FastifySchema>;

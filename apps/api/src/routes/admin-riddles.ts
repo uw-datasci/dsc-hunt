@@ -12,7 +12,11 @@ import { EventsRepository } from "../modules/events/events.repository";
 
 const adminRiddlesRoutes: FastifyPluginAsync = async (fastify) => {
   const controller = new AdminRiddlesController(
-    new AdminRiddlesService(new AdminRiddlesRepository(), new EventsRepository())
+    new AdminRiddlesService(
+      new AdminRiddlesRepository(),
+      new EventsRepository(),
+      fastify.storage
+    )
   );
   const admin = fastify.requireAdmin;
 
@@ -30,6 +34,21 @@ const adminRiddlesRoutes: FastifyPluginAsync = async (fastify) => {
     "/events/:id/admin/riddles/:position/regenerate-qr",
     { schema: adminRiddlesSchema.regenerateQr, preHandler: admin },
     controller.regenerateQr
+  );
+  fastify.post<{ Params: RiddleParams }>(
+    "/events/:id/admin/riddles/:position/image",
+    { schema: adminRiddlesSchema.uploadImage, preHandler: admin },
+    controller.uploadImage
+  );
+  fastify.delete<{ Params: RiddleParams }>(
+    "/events/:id/admin/riddles/:position/image",
+    { schema: adminRiddlesSchema.removeImage, preHandler: admin },
+    controller.removeImage
+  );
+  fastify.get<{ Params: RiddleParams }>(
+    "/events/:id/admin/riddles/:position/image",
+    { schema: adminRiddlesSchema.image, preHandler: admin },
+    controller.image
   );
 };
 

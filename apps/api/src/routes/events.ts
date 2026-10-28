@@ -25,7 +25,13 @@ const eventsRoutes: FastifyPluginAsync = async (fastify) => {
   const controller = new EventsController(service);
   const scoring = new ScoringService(new ScoringRepository(), fastify.eventHub);
   const riddles = new RiddlesController(
-    new RiddlesService(new RiddlesRepository(), eventsRepository, fastify.eventHub, scoring)
+    new RiddlesService(
+      new RiddlesRepository(),
+      eventsRepository,
+      fastify.eventHub,
+      scoring,
+      fastify.storage
+    )
   );
   const auth = fastify.requireAuth;
 
@@ -80,6 +86,11 @@ const eventsRoutes: FastifyPluginAsync = async (fastify) => {
     "/events/:id/riddles",
     { schema: riddlesSchema.get, preHandler: auth },
     riddles.get
+  );
+  fastify.get<{ Params: RiddleParams }>(
+    "/events/:id/riddles/:position/image",
+    { schema: riddlesSchema.image, preHandler: auth },
+    riddles.image
   );
   fastify.post<{ Params: RiddleParams }>(
     "/events/:id/riddles/:position/flip",

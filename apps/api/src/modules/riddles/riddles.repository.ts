@@ -30,15 +30,15 @@ function setRiddleStatusAt(param: string, status: "solved" | "visited"): string 
     .join(",\n        ");
 }
 
+/** A card is revealed once it's the active riddle, or solved / visited. */
+const IS_REVEALED = `(teams.active_riddle = positions.position
+        OR ${riddleColumnAt("positions.position", "teams")} IN ('solved', 'visited'))`;
+
 const PROGRESS_SQL = `
   SELECT positions.position,
     ${riddleColumnAt("positions.position", "teams")} AS status,
-    CASE
-      WHEN teams.active_riddle = positions.position
-        OR ${riddleColumnAt("positions.position", "teams")} IN ('solved', 'visited')
-      THEN riddles.riddle_text
-      ELSE NULL
-    END AS text,
+    CASE WHEN ${IS_REVEALED} THEN riddles.riddle_text ELSE NULL END AS text,
+    COALESCE(${IS_REVEALED} AND riddles.image_key IS NOT NULL, false) AS has_image,
     teams.active_riddle
   FROM teams
   CROSS JOIN generate_series(1, 6) AS positions(position)
@@ -133,6 +133,23 @@ export class RiddlesRepository {
        WHERE team_id = $1`,
       [teamId, position]
     );
+  }
+
+  /**
+   * The image key for a card the team has revealed (same rule as the riddle
+   * text). Null when the card is face down or has no image.
+   */
+  async findRevealedImageKey(teamId: string, position: number): Promise<string | null> {
+    const row = await queryOne<{ image_key: string | null }>(
+      `SELECT riddles.image_key
+       FROM teams
+       CROSS JOIN (SELECT $2::integer AS position) AS positions
+       JOIN riddles
+         ON riddles.event_id = teams.event_id AND riddles.position = positions.position
+       WHERE teams.team_id = $1 AND ${IS_REVEALED}`,
+      [teamId, position]
+    );
+    return row?.image_key ?? null;
   }
 
   /** Accepted answers for a riddle; empty when it isn't configured. */

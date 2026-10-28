@@ -4,6 +4,11 @@ export interface RiddleCard {
   position: number;
   status: RiddleStatus;
   text: string | null;
+  /**
+   * The riddle has a picture, served from `GET /events/:id/riddles/:position/image`.
+   * Like `text`, only true once the card is revealed (active, solved or visited).
+   */
+  hasImage: boolean;
 }
 
 export interface RiddlesResponse {
@@ -22,6 +27,8 @@ export interface AdminRiddle {
   locationName: string | null;
   /** Encoded in the location's QR code as `/scan/<qrIdentifier>`. */
   qrIdentifier: string | null;
+  /** Has a picture, previewed via `GET /events/:id/admin/riddles/:position/image`. */
+  hasImage: boolean;
 }
 
 export interface ScanResponse {

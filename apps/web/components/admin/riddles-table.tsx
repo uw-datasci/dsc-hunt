@@ -58,6 +58,11 @@ export function RiddlesTable({ event, riddles, origin }: RiddlesTableProps) {
                 <TableRow key={riddle.position}>
                   <TableCell className="tabular-nums">{riddle.position}</TableCell>
                   <TableCell className="max-w-xs truncate">
+                    {riddle.hasImage ? (
+                      <span className="mr-1" title="Has an image" aria-label="Has an image">
+                        🖼
+                      </span>
+                    ) : null}
                     {riddle.text ?? <span className="text-muted-foreground">Not set</span>}
                   </TableCell>
                   <TableCell>

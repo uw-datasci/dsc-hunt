@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { toast } from "sonner";
 import type { AdminRiddle } from "@dsc-hunt/types";
 import { Button } from "@dsc-hunt/ui/components/button";
@@ -16,6 +16,10 @@ import { Input } from "@dsc-hunt/ui/components/input";
 import { Label } from "@dsc-hunt/ui/components/label";
 import { Textarea } from "@dsc-hunt/ui/components/textarea";
 import { apiErrorMessage } from "@/lib/api/error-message";
+
+/** Mirrors the API's limits; the API re-checks (by file bytes, not name). */
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 interface RiddleEditorDialogProps {
   readonly eventId: string;
@@ -37,7 +41,13 @@ export function RiddleEditorDialog({
   const [text, setText] = useState(riddle.text ?? "");
   const [locationName, setLocationName] = useState(riddle.locationName ?? "");
   const [answers, setAnswers] = useState(riddle.answers.join("\n"));
-  const [busy, setBusy] = useState<"save" | "regenerate" | null>(null);
+  const [busy, setBusy] = useState<"save" | "regenerate" | "image" | null>(null);
+  const [hasImage, setHasImage] = useState(riddle.hasImage);
+  // Bumped after each upload so the preview doesn't show a cached old image.
+  const [imageVersion, setImageVersion] = useState(0);
+  const fileInput = useRef<HTMLInputElement>(null);
+  // The riddle row exists once it's been saved; images attach to it.
+  const isSaved = riddle.text !== null;
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
   const base = `/api/admin/events/${encodeURIComponent(eventId)}/riddles/${riddle.position}`;
 
@@ -79,6 +89,56 @@ export function RiddleEditorDialog({
       }
       toast.success(`New QR code for riddle ${riddle.position}. Reprint it.`);
       setConfirmRegenerate(false);
+      onSaved();
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function uploadImage(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow picking the same file again
+    if (!file) return;
+    if (!IMAGE_TYPES.includes(file.type)) {
+      toast.error("Only JPEG, PNG, WebP or GIF images are allowed");
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error("Images can be at most 5 MB");
+      return;
+    }
+    setBusy("image");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch(`${base}/image`, { method: "POST", body: form });
+      if (!response.ok) {
+        toast.error(await apiErrorMessage(response, "Couldn't upload the image"));
+        return;
+      }
+      setHasImage(true);
+      setImageVersion((version) => version + 1);
+      toast.success(`Image added to riddle ${riddle.position}`);
+      onSaved();
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function removeImage() {
+    setBusy("image");
+    try {
+      const response = await fetch(`${base}/image`, { method: "DELETE" });
+      if (!response.ok) {
+        toast.error(await apiErrorMessage(response, "Couldn't remove the image"));
+        return;
+      }
+      setHasImage(false);
+      toast.success(`Image removed from riddle ${riddle.position}`);
       onSaved();
     } catch {
       toast.error("Network error. Please try again.");
@@ -135,6 +195,58 @@ export function RiddleEditorDialog({
               One per line, up to 10. Matching ignores case, spaces, punctuation, accents and a
               leading &quot;the&quot;/&quot;a&quot;/&quot;an&quot;.
             </p>
+          </div>
+
+          <div className="grid gap-2">
+            <Label>
+              Image <span className="font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            {isSaved ? (
+              <div className="flex flex-wrap items-center gap-3">
+                {hasImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- signed URL via redirect
+                  <img
+                    src={`${base}/image?v=${imageVersion}`}
+                    alt={`Image for riddle ${riddle.position}`}
+                    className="h-20 w-28 rounded border object-contain"
+                  />
+                ) : null}
+                <input
+                  ref={fileInput}
+                  type="file"
+                  accept={IMAGE_TYPES.join(",")}
+                  className="hidden"
+                  onChange={(e) => void uploadImage(e)}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={busy !== null}
+                  onClick={() => fileInput.current?.click()}
+                >
+                  {busy === "image" ? "Uploading…" : hasImage ? "Replace" : "Upload"}
+                </Button>
+                {hasImage ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={busy !== null}
+                    onClick={() => void removeImage()}
+                  >
+                    Remove
+                  </Button>
+                ) : null}
+                <p className="w-full text-xs text-muted-foreground">
+                  JPEG, PNG, WebP or GIF, up to 5 MB. Shown on the card once it&apos;s flipped.
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Save the riddle first to add an image.
+              </p>
+            )}
           </div>
 
           {riddle.qrIdentifier ? (

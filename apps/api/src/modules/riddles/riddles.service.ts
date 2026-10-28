@@ -4,6 +4,7 @@ import { HttpError } from "../../lib/http-error";
 import type { EventsRepository } from "../events/events.repository";
 import type { EventHub } from "../realtime/event-hub";
 import type { ScoringService } from "../scoring/scoring.service";
+import { SIGNED_URL_SECONDS, type ObjectStorage } from "../../plugins/storage";
 import { matchesAnswer } from "./answer-match";
 import type { RiddlesRepository } from "./riddles.repository";
 import type { LocationRow, ProgressRow, TeamStateRow } from "./riddles.types";
@@ -34,8 +35,22 @@ export class RiddlesService {
     private readonly repository: RiddlesRepository,
     private readonly events: EventsRepository,
     private readonly hub: EventHub,
-    private readonly scoring: ScoringService
+    private readonly scoring: ScoringService,
+    private readonly storage: ObjectStorage | null = null
   ) {}
+
+  /**
+   * A short-lived signed URL for a riddle's image, only for a card the
+   * caller's team has revealed (same rule as the riddle text).
+   */
+  async imageUrl(eventId: string, position: number, userId: string): Promise<string> {
+    if (!this.storage) throw new HttpError(503, "Image storage isn't configured");
+    await this.requireEvent(eventId);
+    const teamId = await this.requireTeam(eventId, userId);
+    const key = await this.repository.findRevealedImageKey(teamId, position);
+    if (!key) throw new HttpError(404, "No image for this riddle");
+    return this.storage.signedGetUrl(key, SIGNED_URL_SECONDS);
+  }
 
   /** Id of the current hunt - the newest event, matching `GET /events/current`. */
   async getCurrentEventId(): Promise<string> {
@@ -202,6 +217,7 @@ export class RiddlesService {
         position: Number(row.position),
         status: row.status,
         text: row.text,
+        hasImage: row.has_image,
       })),
       activeRiddle: rows[0]?.active_riddle ?? null,
     };

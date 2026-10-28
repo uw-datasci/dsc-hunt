@@ -9,6 +9,7 @@ function rowToRiddle(row: AdminRiddleRow): AdminRiddle {
     answers: row.answers ?? [],
     locationName: row.location_name,
     qrIdentifier: row.qr_identifier,
+    hasImage: Boolean(row.has_image),
   };
 }
 
@@ -20,7 +21,8 @@ export class AdminRiddlesRepository {
               riddles.riddle_text,
               riddles.answers,
               locations.name AS location_name,
-              locations.qr_identifier
+              locations.qr_identifier,
+              (riddles.image_key IS NOT NULL) AS has_image
        FROM generate_series(1, 6) AS positions(position)
        LEFT JOIN riddles
          ON riddles.event_id = $1 AND riddles.position = positions.position
@@ -56,12 +58,12 @@ export class AdminRiddlesRepository {
       newQrIdentifier: string;
     }
   ): Promise<AdminRiddle> {
-    const [riddle] = await tx.query<{ riddle_id: string }>(
+    const [riddle] = await tx.query<{ riddle_id: string; image_key: string | null }>(
       `INSERT INTO riddles (event_id, position, riddle_text, answers)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (event_id, position)
        DO UPDATE SET riddle_text = EXCLUDED.riddle_text, answers = EXCLUDED.answers
-       RETURNING riddle_id`,
+       RETURNING riddle_id, image_key`,
       [input.eventId, input.position, input.text, input.answers]
     );
     if (!riddle) throw new Error("Riddle upsert returned no row");
@@ -88,7 +90,45 @@ export class AdminRiddlesRepository {
       answers: input.answers,
       locationName: location.name,
       qrIdentifier: location.qr_identifier,
+      hasImage: riddle.image_key !== null,
     };
+  }
+
+  /**
+   * Locks the riddle row at a position and returns its current image key
+   * (`{ image_key: null }` when it has none). Null when the riddle isn't saved yet.
+   */
+  async lockImage(
+    tx: DatabaseTransaction,
+    eventId: string,
+    position: number
+  ): Promise<{ image_key: string | null } | null> {
+    const [row] = await tx.query<{ image_key: string | null }>(
+      `SELECT image_key FROM riddles WHERE event_id = $1 AND position = $2 FOR UPDATE`,
+      [eventId, position]
+    );
+    return row ?? null;
+  }
+
+  async setImageKey(
+    tx: DatabaseTransaction,
+    eventId: string,
+    position: number,
+    imageKey: string | null
+  ): Promise<void> {
+    await tx.query(`UPDATE riddles SET image_key = $3 WHERE event_id = $1 AND position = $2`, [
+      eventId,
+      position,
+      imageKey,
+    ]);
+  }
+
+  async findImageKey(eventId: string, position: number): Promise<string | null> {
+    const [row] = await query<{ image_key: string | null }>(
+      `SELECT image_key FROM riddles WHERE event_id = $1 AND position = $2`,
+      [eventId, position]
+    );
+    return row?.image_key ?? null;
   }
 
   /** Replaces a location's QR code. Returns null if the position has no location. */

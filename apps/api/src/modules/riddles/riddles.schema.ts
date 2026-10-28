@@ -45,6 +45,7 @@ export const riddlesSchema = {
   get: { params: eventParams },
   getCurrent: {},
   flip: { params: riddleParams },
+  image: { params: riddleParams },
   flipCurrent: { params: currentParams },
   answer: { params: riddleParams, body: answerBody },
   answerCurrent: { params: currentParams, body: answerBody },
