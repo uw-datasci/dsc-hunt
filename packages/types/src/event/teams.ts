@@ -17,3 +17,11 @@ export interface TeamMember {
 export interface TeamWithMembers extends Team {
   members: TeamMember[];
 }
+
+/** A team as admins see it on /admin/teams. */
+export interface AdminTeam extends Team {
+  memberCount: number;
+  /** Locations found (successful QR scans). */
+  found: number;
+  totalScore: number;
+}

@@ -69,7 +69,76 @@ const createBody = {
   properties: { name: { type: "string", maxLength: 100 } },
 } as const;
 
+const adminTeamObject = {
+  type: "object",
+  properties: {
+    ...teamProperties,
+    memberCount: { type: "integer" },
+    found: { type: "integer" },
+    totalScore: { type: "integer" },
+  },
+  required: [...teamRequired, "memberCount", "found", "totalScore"],
+} as const;
+
+const adminTeamParams = {
+  type: "object",
+  required: ["id", "teamId"],
+  properties: {
+    id: { type: "string", format: "uuid" },
+    teamId: { type: "string", format: "uuid" },
+  },
+} as const;
+
+const adminMemberParams = {
+  type: "object",
+  required: ["id", "teamId", "userId"],
+  properties: {
+    id: { type: "string", format: "uuid" },
+    teamId: { type: "string", format: "uuid" },
+    userId: { type: "string", format: "uuid" },
+  },
+} as const;
+
 export const teamsSchema = {
+  listForAdmin: {
+    tags: ["teams", "admin"],
+    summary: "Every team in the event with member, scan and score counts. Staff only.",
+    params: eventParams,
+    response: {
+      200: {
+        type: "object",
+        properties: { teams: { type: "array", items: adminTeamObject } },
+        required: ["teams"],
+      },
+      404: errorObject,
+    },
+  },
+  adminRename: {
+    tags: ["teams", "admin"],
+    summary: "Rename a team (any status). Staff only.",
+    params: adminTeamParams,
+    body: {
+      type: "object",
+      required: ["name"],
+      additionalProperties: false,
+      properties: { name: { type: "string", minLength: 1, maxLength: 100 } },
+    },
+    response: { 200: teamEnvelope, 400: errorObject, 404: errorObject },
+  },
+  adminDeleteTeam: {
+    tags: ["teams", "admin"],
+    summary: "Delete a team and its memberships. Staff only, before the start.",
+    params: adminTeamParams,
+    response: { 404: errorObject, 409: errorObject },
+  },
+  adminRemoveMember: {
+    tags: ["teams", "admin"],
+    summary:
+      "Remove a player from a team (any status). Before the start an emptied team is " +
+      "deleted; once live it's kept. Staff only.",
+    params: adminMemberParams,
+    response: { 404: errorObject },
+  },
   create: {
     tags: ["teams"],
     summary: "Create a team and join it. Name defaults to `Team <code>`.",

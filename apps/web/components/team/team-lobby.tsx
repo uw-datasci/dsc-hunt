@@ -33,9 +33,11 @@ interface TeamLobbyProps {
   readonly team: TeamWithMembers;
   readonly event: Event | null;
   readonly accessToken: string | null;
+  /** Signed-in player; if a roster update leaves them out, an admin removed them. */
+  readonly userId: string | null;
 }
 
-export function TeamLobby({ team, event, accessToken }: TeamLobbyProps) {
+export function TeamLobby({ team, event, accessToken, userId }: TeamLobbyProps) {
   const router = useRouter();
   const [members, setMembers] = useState(team.members);
   const [leaveOpen, setLeaveOpen] = useState(false);
@@ -51,7 +53,19 @@ export function TeamLobby({ team, event, accessToken }: TeamLobbyProps) {
     setMembers(team.members);
   }
 
-  const onTeamMembers = useCallback((msg: TeamMembersMessage) => setMembers(msg.members), []);
+  const onTeamMembers = useCallback(
+    (msg: TeamMembersMessage) => {
+      // Players who leave stop getting team messages first, so a roster without
+      // us means an admin removed us (or deleted the team).
+      if (userId && !msg.members.some((member) => member.userId === userId)) {
+        toast.info(`You were removed from ${team.name}`);
+        startRefresh(() => router.refresh());
+        return;
+      }
+      setMembers(msg.members);
+    },
+    [userId, team.name, router]
+  );
 
   // The server sends a status snapshot on every (re)connect. Refresh on
   // reconnects so roster changes missed while offline show up.
