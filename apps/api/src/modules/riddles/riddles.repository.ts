@@ -1,5 +1,12 @@
-import { query, queryOne } from "@dsc-hunt/db";
-import type { AnswerAttemptRow, LocationRow, ProgressRow, TeamStateRow } from "./riddles.types";
+import { query, queryOne, type DatabaseTransaction } from "@dsc-hunt/db";
+import type { TeamVisit } from "@dsc-hunt/types";
+import type {
+  AnswerAttemptRow,
+  LocationRow,
+  PriorVisitRow,
+  ProgressRow,
+  TeamStateRow,
+} from "./riddles.types";
 
 /**
  * `CASE` over the six riddle columns, for the riddle at position `$n`. The
@@ -24,15 +31,15 @@ function setRiddleStatusAt(param: string, status: "solved" | "visited"): string 
     .join(",\n        ");
 }
 
+/** A card is revealed once it's the active riddle, or solved / visited. */
+const IS_REVEALED = `(teams.active_riddle = positions.position
+        OR ${riddleColumnAt("positions.position", "teams")} IN ('solved', 'visited'))`;
+
 const PROGRESS_SQL = `
   SELECT positions.position,
     ${riddleColumnAt("positions.position", "teams")} AS status,
-    CASE
-      WHEN teams.active_riddle = positions.position
-        OR ${riddleColumnAt("positions.position", "teams")} IN ('solved', 'visited')
-      THEN riddles.riddle_text
-      ELSE NULL
-    END AS text,
+    CASE WHEN ${IS_REVEALED} THEN riddles.riddle_text ELSE NULL END AS text,
+    COALESCE(${IS_REVEALED} AND riddles.image_key IS NOT NULL, false) AS has_image,
     teams.active_riddle
   FROM teams
   CROSS JOIN generate_series(1, 6) AS positions(position)
@@ -129,12 +136,53 @@ export class RiddlesRepository {
     );
   }
 
-  async findAnswer(eventId: string, position: number): Promise<string | null> {
-    const row = await queryOne<{ answer: string | null }>(
-      `SELECT answer FROM riddles WHERE event_id = $1 AND position = $2`,
+  /**
+   * The image key for a card the team has revealed (same rule as the riddle
+   * text). Null when the card is face down or has no image.
+   */
+  async findRevealedImageKey(teamId: string, position: number): Promise<string | null> {
+    const row = await queryOne<{ image_key: string | null }>(
+      `SELECT riddles.image_key
+       FROM teams
+       CROSS JOIN (SELECT $2::integer AS position) AS positions
+       JOIN riddles
+         ON riddles.event_id = teams.event_id AND riddles.position = positions.position
+       WHERE teams.team_id = $1 AND ${IS_REVEALED}`,
+      [teamId, position]
+    );
+    return row?.image_key ?? null;
+  }
+
+  /** The locations a team found, in the order it found them. */
+  async findTeamVisits(teamId: string): Promise<TeamVisit[]> {
+    const rows = await query<{
+      position: number;
+      location_name: string;
+      points: number;
+      visited_at: Date | string;
+    }>(
+      `SELECT locations.position, locations.name AS location_name, visits.points, visits.visited_at
+       FROM visits
+       JOIN locations ON locations.location_id = visits.location_id
+       WHERE visits.team_id = $1
+       ORDER BY visits.visited_at ASC, visits.visit_id ASC`,
+      [teamId]
+    );
+    return rows.map((row) => ({
+      position: Number(row.position),
+      locationName: row.location_name,
+      points: row.points,
+      scannedAt: new Date(row.visited_at).toISOString(),
+    }));
+  }
+
+  /** Accepted answers for a riddle; empty when it isn't configured. */
+  async findAnswers(eventId: string, position: number): Promise<string[]> {
+    const row = await queryOne<{ answers: string[] }>(
+      `SELECT answers FROM riddles WHERE event_id = $1 AND position = $2`,
       [eventId, position]
     );
-    return row?.answer ?? null;
+    return row?.answers ?? [];
   }
 
   /** Marks the active riddle solved. Returns false if it was no longer active. */
@@ -163,37 +211,41 @@ export class RiddlesRepository {
   }
 
   /**
-   * Marks the solved riddle visited, clears the active riddle, adds points and
-   * records the visit in one statement. Returns false if nothing changed.
+   * Marks the solved riddle visited and clears the active riddle, inside the
+   * scan transaction. Points and the visit row come from the scoring module.
+   * Returns false if nothing changed.
    */
-  async recordVisit(
+  async markVisited(
+    transaction: DatabaseTransaction,
     teamId: string,
     eventId: string,
-    location: LocationRow,
-    points: number
+    position: number
   ): Promise<boolean> {
-    const rows = await query(
-      `WITH scanned AS (
-         UPDATE teams
-         SET ${setRiddleStatusAt("$3", "visited")},
-             active_riddle = NULL,
-             total_score = total_score + $5
-         WHERE team_id = $1
-           AND event_id = $2
-           AND active_riddle = $3
-           AND ${riddleColumnAt("$3")} = 'solved'
-           AND ${EVENT_IS_LIVE}
-         RETURNING team_id
-       ),
-       visit AS (
-         INSERT INTO visits (location_id, team_id, points)
-         SELECT $4::uuid, team_id, $5::integer
-         FROM scanned
-         RETURNING team_id
-       )
-       SELECT team_id FROM visit`,
-      [teamId, eventId, location.position, location.location_id, points]
+    const rows = await transaction.query(
+      `UPDATE teams
+       SET ${setRiddleStatusAt("$3", "visited")},
+           active_riddle = NULL
+       WHERE team_id = $1
+         AND event_id = $2
+         AND active_riddle = $3
+         AND ${riddleColumnAt("$3")} = 'solved'
+         AND ${EVENT_IS_LIVE}
+       RETURNING team_id`,
+      [teamId, eventId, position]
     );
     return rows.length > 0;
+  }
+
+  /** What a team earned at a location it already visited, plus its current total. */
+  findPriorVisit(teamId: string, locationId: string): Promise<PriorVisitRow | null> {
+    return queryOne<PriorVisitRow>(
+      `SELECT visits.points, teams.total_score
+       FROM visits
+       JOIN teams ON teams.team_id = visits.team_id
+       WHERE visits.team_id = $1 AND visits.location_id = $2
+       ORDER BY visits.visited_at ASC
+       LIMIT 1`,
+      [teamId, locationId]
+    );
   }
 }

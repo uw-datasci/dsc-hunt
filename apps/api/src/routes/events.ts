@@ -16,22 +16,33 @@ import type {
 } from "../modules/riddles/riddles.types";
 import { riddlesSchema } from "../modules/riddles/riddles.schema";
 import { RiddlesService } from "../modules/riddles/riddles.service";
+import { ScoringRepository } from "../modules/scoring/scoring.repository";
+import { ScoringService } from "../modules/scoring/scoring.service";
+import { StatsPublisher } from "../modules/stats/stats.publisher";
+import { StatsRepository } from "../modules/stats/stats.repository";
 
 const eventsRoutes: FastifyPluginAsync = async (fastify) => {
   const eventsRepository = new EventsRepository();
-  const service = new EventsService(eventsRepository, fastify.eventHub);
+  const statsRepository = new StatsRepository();
+  const stats = new StatsPublisher(statsRepository, fastify.eventHub, fastify.log);
+  const service = new EventsService(eventsRepository, fastify.eventHub, statsRepository, stats);
   const controller = new EventsController(service);
+  const scoring = new ScoringService(new ScoringRepository(), fastify.eventHub);
   const riddles = new RiddlesController(
-    new RiddlesService(new RiddlesRepository(), eventsRepository, fastify.eventHub)
+    new RiddlesService(
+      new RiddlesRepository(),
+      eventsRepository,
+      fastify.eventHub,
+      scoring,
+      fastify.storage,
+      stats
+    )
   );
   const auth = fastify.requireAuth;
 
-  // Any signed-in player can read status; it gates the home page and /riddles.
-  fastify.get(
-    "/events/current",
-    { schema: eventsSchema.getCurrent, preHandler: auth },
-    controller.getCurrent
-  );
+  // Public: status gates the home page and /riddles, and the logged-out
+  // leaderboard needs the current event too.
+  fastify.get("/events/current", { schema: eventsSchema.getCurrent }, controller.getCurrent);
   fastify.get(
     "/events/:id",
     { schema: eventsSchema.getById, preHandler: auth },
@@ -43,6 +54,16 @@ const eventsRoutes: FastifyPluginAsync = async (fastify) => {
     "/events/:id/start",
     { schema: eventsSchema.start, preHandler: fastify.requireAdmin },
     controller.start
+  );
+  fastify.put(
+    "/events/:id/starting-location",
+    { schema: eventsSchema.setStartingLocation, preHandler: fastify.requireAdmin },
+    controller.setStartingLocation
+  );
+  fastify.get(
+    "/events/:id/admin/stats",
+    { schema: eventsSchema.getStats, preHandler: fastify.requireAdmin },
+    controller.getStats
   );
   fastify.post(
     "/events/:id/end",
@@ -75,6 +96,17 @@ const eventsRoutes: FastifyPluginAsync = async (fastify) => {
     "/events/:id/riddles",
     { schema: riddlesSchema.get, preHandler: auth },
     riddles.get
+  );
+  // The caller's team's scans with points, for the results screen.
+  fastify.get<{ Params: EventParams }>(
+    "/events/:id/team/visits",
+    { schema: riddlesSchema.teamVisits, preHandler: auth },
+    riddles.teamVisits
+  );
+  fastify.get<{ Params: RiddleParams }>(
+    "/events/:id/riddles/:position/image",
+    { schema: riddlesSchema.image, preHandler: auth },
+    riddles.image
   );
   fastify.post<{ Params: RiddleParams }>(
     "/events/:id/riddles/:position/flip",

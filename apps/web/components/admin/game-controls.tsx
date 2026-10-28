@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Check, X } from "lucide-react";
 import type { Event, EventStatus } from "@dsc-hunt/types";
 import { Badge } from "@dsc-hunt/ui/components/badge";
 import { Button } from "@dsc-hunt/ui/components/button";
@@ -14,7 +16,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dsc-hunt/ui/components/dialog";
-import { useEventStream, type EventStatusMessage } from "@/hooks/use-event-stream";
+import { cn } from "@dsc-hunt/ui/lib/utils";
+import { useAdminLive } from "@/components/admin/admin-live";
 
 const STATUS_LABEL: Record<EventStatus, string> = {
   not_started: "Not started",
@@ -22,31 +25,35 @@ const STATUS_LABEL: Record<EventStatus, string> = {
   ended: "Ended",
 };
 
-interface GameControlsProps {
-  readonly event: Event;
-  readonly accessToken: string | null;
+function ChecklistItem({ ok, children }: { ok: boolean; children: React.ReactNode }) {
+  return (
+    <li className="flex items-center gap-2 text-sm">
+      {ok ? (
+        <Check className="h-4 w-4 text-emerald-500" aria-label="Done" />
+      ) : (
+        <X className="h-4 w-4 text-destructive" aria-label="Not done" />
+      )}
+      <span className={cn(!ok && "text-muted-foreground")}>{children}</span>
+    </li>
+  );
 }
 
 /**
  * Status badge + Start / End buttons with confirm dialogs. Start and End call
- * the API through /api/admin/events/:id/{start,end}; the badge also follows
- * the event stream so a change made by another admin shows up live.
+ * the API through /api/admin/events/:id/{start,end}. Status and the start
+ * checklist come from the shared admin stream (`AdminLiveProvider`), so a
+ * change made by another admin, a new team or a riddle edit shows up live.
  */
-export function GameControls({ event, accessToken }: GameControlsProps) {
+export function GameControls() {
   const router = useRouter();
-  const [status, setStatus] = useState<EventStatus>(event.status);
+  const { event, status, stats, setStatus } = useAdminLive();
   const [dialog, setDialog] = useState<"start" | "end" | null>(null);
   const [setupConfirmed, setSetupConfirmed] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const onEventStatus = useCallback((msg: EventStatusMessage) => setStatus(msg.status), []);
-  useEventStream({
-    eventId: event.id,
-    accessToken,
-    initialStatus: event.status,
-    onEventStatus,
-  });
+  const blockers = stats?.startBlockers ?? [];
+  const canStart = stats !== null && blockers.length === 0 && setupConfirmed;
 
   function openStart() {
     setSetupConfirmed(false);
@@ -83,14 +90,6 @@ export function GameControls({ event, accessToken }: GameControlsProps) {
     }
   }
 
-  function confirmStart() {
-    void transition("start");
-  }
-
-  function confirmEnd() {
-    void transition("end");
-  }
-
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Badge
@@ -116,22 +115,49 @@ export function GameControls({ event, accessToken }: GameControlsProps) {
             <DialogTitle>Start the hunt?</DialogTitle>
             <DialogDescription>
               Every team will see their riddles immediately and QR scans will start counting.
+              Riddles and the starting location lock once it starts.
             </DialogDescription>
           </DialogHeader>
-          {/* TODO: show a checklist summary (riddle count, teams registered, volunteers in place). */}
+
+          {stats ? (
+            <ul className="grid gap-2">
+              <ChecklistItem ok={stats.configuredRiddles === stats.totalRiddles}>
+                All {stats.totalRiddles} riddles set up ({stats.configuredRiddles}/
+                {stats.totalRiddles})
+              </ChecklistItem>
+              <ChecklistItem ok={stats.startingLocationSet}>
+                Starting location set
+              </ChecklistItem>
+              <ChecklistItem ok={stats.teamCount > 0}>
+                At least one team registered ({stats.teamCount})
+              </ChecklistItem>
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">Checking readiness…</p>
+          )}
+          {blockers.length > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Fix these on the{" "}
+              <Link href="/admin/riddles" className="underline underline-offset-4">
+                Riddles page
+              </Link>
+              , or wait for teams to join.
+            </p>
+          ) : null}
+
           <label className="flex items-start gap-2 text-sm">
             <Checkbox
               checked={setupConfirmed}
               onCheckedChange={(checked) => setSetupConfirmed(checked === true)}
             />
-            Riddles are final and every QR code + volunteer is in place.
+            QR codes are posted and volunteers are in place.
           </label>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <DialogFooter>
             <Button variant="outline" disabled={pending} onClick={() => setDialog(null)}>
               Cancel
             </Button>
-            <Button onClick={confirmStart} disabled={!setupConfirmed || pending}>
+            <Button onClick={() => void transition("start")} disabled={!canStart || pending}>
               {pending ? "Starting…" : "Start hunt"}
             </Button>
           </DialogFooter>
@@ -152,7 +178,11 @@ export function GameControls({ event, accessToken }: GameControlsProps) {
             <Button variant="outline" disabled={pending} onClick={() => setDialog(null)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={confirmEnd} disabled={pending}>
+            <Button
+              variant="destructive"
+              onClick={() => void transition("end")}
+              disabled={pending}
+            >
               {pending ? "Ending…" : "End hunt"}
             </Button>
           </DialogFooter>

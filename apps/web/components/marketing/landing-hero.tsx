@@ -1,6 +1,7 @@
 import Link from "next/link";
-import type { EventStatus } from "@dsc-hunt/types";
+import type { Event, EventStatus } from "@dsc-hunt/types";
 import { Button } from "@dsc-hunt/ui/components/button";
+import { StartingLocationCard } from "@/components/event/starting-location-card";
 
 export interface LandingSession {
   name: string | null;
@@ -18,9 +19,11 @@ const ENTRY_HREF: Record<EventStatus, string> = {
 interface LandingHeroProps {
   loginUrl: string;
   session: LandingSession | null;
+  /** Current hunt, for the kickoff venue (shown before the start). */
+  event: Event | null;
 }
 
-export function LandingHero({ loginUrl, session }: Readonly<LandingHeroProps>) {
+export function LandingHero({ loginUrl, session, event }: Readonly<LandingHeroProps>) {
   return (
     <div className="mx-auto flex min-h-svh max-w-lg flex-col justify-center px-6 py-16">
       <div className="rounded-2xl border bg-card p-8 shadow-sm">
@@ -31,6 +34,10 @@ export function LandingHero({ loginUrl, session }: Readonly<LandingHeroProps>) {
         <p className="mt-3 text-sm text-muted-foreground">
           Solve the riddles, haunt the campus, collect the candy. 🎃
         </p>
+
+        <div className="mt-6 empty:hidden">
+          <StartingLocationCard event={event} />
+        </div>
 
         {session ? (
           <div className="mt-10 space-y-4">
@@ -58,6 +65,15 @@ export function LandingHero({ loginUrl, session }: Readonly<LandingHeroProps>) {
             </p>
           </div>
         )}
+
+        <p className="mt-6 text-center text-sm">
+          <Link
+            href="/leaderboard"
+            className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          >
+            View the leaderboard
+          </Link>
+        </p>
       </div>
     </div>
   );

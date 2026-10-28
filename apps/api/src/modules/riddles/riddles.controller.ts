@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { handle } from "../../lib/http";
+import { handle, handleRedirect } from "../../lib/http";
+import { SIGNED_URL_SECONDS } from "../../plugins/storage";
 import type { RiddlesService } from "./riddles.service";
 import type {
   AnswerBody,
@@ -20,6 +21,24 @@ export class RiddlesController {
     this.answerCurrent = this.answerCurrent.bind(this);
     this.scan = this.scan.bind(this);
     this.scanCurrent = this.scanCurrent.bind(this);
+    this.image = this.image.bind(this);
+    this.teamVisits = this.teamVisits.bind(this);
+  }
+
+  teamVisits(request: FastifyRequest<{ Params: EventParams }>, reply: FastifyReply) {
+    return handle(reply, async () => ({
+      visits: await this.service.teamVisits(request.params.id, request.user!.id),
+    }));
+  }
+
+  /** 302 to a short-lived signed URL for a revealed card's image. */
+  image(request: FastifyRequest<{ Params: RiddleParams }>, reply: FastifyReply) {
+    const { id, position } = request.params;
+    return handleRedirect(
+      reply,
+      () => this.service.imageUrl(id, position, request.user!.id),
+      SIGNED_URL_SECONDS - 60
+    );
   }
 
   get(request: FastifyRequest<{ Params: EventParams }>, reply: FastifyReply) {

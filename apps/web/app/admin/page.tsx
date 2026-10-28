@@ -1,19 +1,14 @@
 import Link from "next/link";
+import type { EventStats } from "@dsc-hunt/types";
+import { AdminLiveProvider } from "@/components/admin/admin-live";
 import { AdminShell } from "@/components/admin/admin-shell";
+import { DashboardStats } from "@/components/admin/dashboard-stats";
 import { GameControls } from "@/components/admin/game-controls";
-import { StatTile } from "@/components/shared/stat-tile";
+import { proxyApiJson } from "@/lib/api/proxy";
 import { getAccessToken } from "@/lib/auth/session";
 import { getCurrentEvent } from "@/lib/event/current";
 
 export const dynamic = "force-dynamic";
-
-// TODO: replace with real counts.
-const PLACEHOLDER_STATS = [
-  { label: "Teams", value: 0 },
-  { label: "Players", value: 0 },
-  { label: "Locations", value: 0 },
-  { label: "Scans", value: 0 },
-];
 
 const SECTIONS = [
   { href: "/admin/teams", title: "Teams", description: "Registered teams and their members." },
@@ -29,40 +24,56 @@ const SECTIONS = [
   },
 ];
 
+function SectionLinks() {
+  return (
+    <div className="mt-8 grid gap-3 sm:grid-cols-3">
+      {SECTIONS.map((section) => (
+        <Link
+          key={section.href}
+          href={section.href}
+          className="rounded-xl border bg-card p-4 transition-colors hover:border-primary"
+        >
+          <p className="font-semibold">{section.title}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{section.description}</p>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 export default async function AdminHomePage() {
   const [event, accessToken] = await Promise.all([getCurrentEvent(), getAccessToken()]);
 
-  return (
-    <AdminShell
-      title="Dashboard"
-      actions={
-        event ? (
-          <GameControls event={event} accessToken={accessToken} />
-        ) : (
+  if (!event) {
+    return (
+      <AdminShell
+        title="Dashboard"
+        actions={
           <p className="text-sm text-muted-foreground">
             No event found. Check the API is running and migrations have been applied.
           </p>
-        )
-      }
-    >
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {PLACEHOLDER_STATS.map((stat) => (
-          <StatTile key={stat.label} label={stat.label} value={stat.value} />
-        ))}
-      </div>
+        }
+      >
+        <SectionLinks />
+      </AdminShell>
+    );
+  }
 
-      <div className="mt-8 grid gap-3 sm:grid-cols-3">
-        {SECTIONS.map((section) => (
-          <Link
-            key={section.href}
-            href={section.href}
-            className="rounded-xl border bg-card p-4 transition-colors hover:border-primary"
-          >
-            <p className="font-semibold">{section.title}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{section.description}</p>
-          </Link>
-        ))}
-      </div>
-    </AdminShell>
+  const { data } = await proxyApiJson<{ stats: EventStats }>(
+    `/events/${encodeURIComponent(event.id)}/admin/stats`,
+    { cache: "no-store" }
+  );
+
+  return (
+    <AdminLiveProvider
+      event={event}
+      initialStats={data?.stats ?? null}
+      accessToken={accessToken}
+    >
+      <AdminShell title="Dashboard" actions={<GameControls />}>
+        <DashboardStats />
+        <SectionLinks />
+      </AdminShell>
+    </AdminLiveProvider>
   );
 }

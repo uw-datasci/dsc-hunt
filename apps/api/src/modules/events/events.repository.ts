@@ -10,6 +10,9 @@ export class EventsRepository {
       status: row.status,
       startedAt: row.started_at,
       endedAt: row.ended_at,
+      teamSizeCap: row.team_size_cap,
+      startingLocationName: row.starting_location_name,
+      startingLocationDetails: row.starting_location_details,
       createdAt: row.created_at,
     };
   }
@@ -24,6 +27,27 @@ export class EventsRepository {
     const row = await queryOne<EventRow>(
       `SELECT * FROM events ORDER BY created_at DESC, id DESC LIMIT 1`
     );
+    return row ? EventsRepository.rowToEvent(row) : null;
+  }
+
+  /**
+   * Sets (or clears, with nulls) the starting location, only while the event
+   * hasn't started. Returns null when the row is missing or already started.
+   */
+  async setStartingLocation(
+    id: string,
+    name: string | null,
+    details: string | null
+  ): Promise<Event | null> {
+    const rows = await query<EventRow>(
+      `UPDATE events
+       SET starting_location_name = $2,
+           starting_location_details = $3
+       WHERE id = $1 AND status = 'not_started'
+       RETURNING *`,
+      [id, name, details]
+    );
+    const row = rows[0];
     return row ? EventsRepository.rowToEvent(row) : null;
   }
 

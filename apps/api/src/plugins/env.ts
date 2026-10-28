@@ -21,6 +21,15 @@ const schema = {
     SUPABASE_URL: { type: "string", default: "" },
     SUPABASE_PUBLISHABLE_KEY: { type: "string", default: "" },
     DATABASE_URL: { type: "string", default: "" },
+    // Neon Object Storage (S3-compatible) for riddle images. The four AWS_*
+    // names are exactly what Neon's generated .env uses (and what the AWS SDK
+    // reads); S3_BUCKET is ours. Optional: image routes return 503 until all
+    // five are set. See .env.example.
+    AWS_ENDPOINT_URL_S3: { type: "string", default: "" },
+    AWS_REGION: { type: "string", default: "" },
+    AWS_ACCESS_KEY_ID: { type: "string", default: "" },
+    AWS_SECRET_ACCESS_KEY: { type: "string", default: "" },
+    S3_BUCKET: { type: "string", default: "" },
   },
 } as const;
 

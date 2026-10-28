@@ -1,16 +1,18 @@
+import { StartingLocationCard } from "@/components/event/starting-location-card";
 import { PageShell } from "@/components/shared/page-shell";
 import { TeamSetup } from "@/components/team/team-setup";
-import { getAccessToken } from "@/lib/auth/session";
+import { getAccessToken, getAuthenticatedUser } from "@/lib/auth/session";
 import { getCurrentEvent } from "@/lib/event/current";
-import { getCurrentTeam } from "@/lib/team/session";
+import { getCurrentTeam } from "@/lib/team/current";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeamPage() {
-  const [team, event, accessToken] = await Promise.all([
-    getCurrentTeam(),
-    getCurrentEvent(),
+  const event = await getCurrentEvent();
+  const [team, accessToken, user] = await Promise.all([
+    getCurrentTeam(event),
     getAccessToken(),
+    getAuthenticatedUser(),
   ]);
 
   return (
@@ -20,7 +22,13 @@ export default async function TeamPage() {
       title="Assemble your coven"
       description="Create a new team and share the code, or join one with a code a teammate gave you."
     >
-      <TeamSetup initialTeam={team} event={event} accessToken={accessToken} />
+      <StartingLocationCard event={event} />
+      <TeamSetup
+        team={team}
+        event={event}
+        accessToken={accessToken}
+        userId={user?.id ?? null}
+      />
     </PageShell>
   );
 }

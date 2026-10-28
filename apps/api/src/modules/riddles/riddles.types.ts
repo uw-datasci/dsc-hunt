@@ -4,6 +4,7 @@ export interface ProgressRow {
   position: number;
   status: RiddleStatus;
   text: string | null;
+  has_image: boolean;
   active_riddle: number | null;
 }
 
@@ -28,6 +29,11 @@ export interface LocationRow {
   location_id: string;
   name: string;
   position: number;
+}
+
+export interface PriorVisitRow {
+  points: number;
+  total_score: number;
 }
 
 export interface EventParams {
