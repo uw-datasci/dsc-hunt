@@ -2,14 +2,18 @@ import type { EventStatus } from "../event/events";
 import type { TeamMember } from "../event/teams";
 import type { RiddleCard } from "../hunt/riddles";
 
-/** Messages pushed to clients over the `GET /events/:id/stream` SSE channel. */
+/**
+ * Messages pushed to clients over the `GET /events/:id/stream` SSE channel.
+ * Each message's comment says who receives it.
+ */
 export type ServerMessage =
+  /** Everyone on the event. */
   | { type: "event_status"; eventId: string; status: EventStatus }
   | {
       /**
-       * A team flipped, solved or scanned a riddle. Sent to the whole event, so
-       * clients must ignore other teams' messages. Riddle text is left out so
-       * other teams can't read it; clients fetch it from `GET /events/:id/riddles`.
+       * A team flipped, solved or scanned a riddle. Sent only to that team's
+       * members and staff. Riddle text is left out; clients fetch it from
+       * `GET /events/:id/riddles`.
        */
       type: "team_progress";
       eventId: string;
@@ -18,6 +22,7 @@ export type ServerMessage =
       activeRiddle: number | null;
     }
   | {
+      /** A team's score changed after a scan. Everyone on the event (leaderboard). */
       type: "score_update";
       eventId: string;
       teamId: string;
@@ -25,14 +30,14 @@ export type ServerMessage =
       lastScoredAt: string;
     }
   | {
-      /** A player joined or left this team. Clients must ignore other teams' messages. */
+      /** A player joined or left this team. Sent only to that team's members and staff. */
       type: "team_members";
       eventId: string;
       teamId: string;
       members: TeamMember[];
     }
   | {
-      /** Live registration counters, sent after every roster change. */
+      /** Live registration counters, sent after every roster change. Staff only. */
       type: "event_stats";
       eventId: string;
       teamCount: number;

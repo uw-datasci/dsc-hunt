@@ -65,6 +65,7 @@ export class TeamsService {
           creatorUserId: user.id,
           creatorDisplayName: displayNameFor(user),
         });
+        this.hub.setUserTeam(eventId, user.id, team.id);
         await this.publishRoster(eventId, team.id);
         return team;
       } catch (error) {
@@ -115,6 +116,8 @@ export class TeamsService {
     if (result === "missing") throw new HttpError(404, "No team with that code");
     if (result === "full") throw new HttpError(409, "Team is full");
 
+    // Point the joiner's open streams at the team first, so they get the roster too.
+    this.hub.setUserTeam(eventId, user.id, team.id);
     await this.publishRoster(eventId, team.id);
     return team;
   }
@@ -129,6 +132,7 @@ export class TeamsService {
     }
 
     await this.repository.removeMember(teamId, userId);
+    this.hub.setUserTeam(team.eventId, userId, null);
     await this.publishRoster(team.eventId, teamId);
   }
 
@@ -166,13 +170,13 @@ export class TeamsService {
     return event;
   }
 
-  /** Tells the team's lobby who's on it, and the admin dashboard the new counts. */
+  /** Tells the team's lobby who's on it (team + staff), and staff the new counts. */
   private async publishRoster(eventId: string, teamId: string): Promise<void> {
     const [members, stats] = await Promise.all([
       this.repository.listMembers(teamId),
       this.repository.stats(eventId),
     ]);
-    this.hub.publish(eventId, { type: "team_members", eventId, teamId, members });
-    this.hub.publish(eventId, { type: "event_stats", eventId, ...stats });
+    this.hub.publishToTeam(eventId, teamId, { type: "team_members", eventId, teamId, members });
+    this.hub.publishToStaff(eventId, { type: "event_stats", eventId, ...stats });
   }
 }

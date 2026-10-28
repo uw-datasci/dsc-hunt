@@ -210,7 +210,7 @@ export class RiddlesService {
 
   /** Tells every teammate's open riddle board that the team's progress changed. */
   private publishProgress(progress: RiddlesResponse): RiddlesResponse {
-    this.hub.publish(progress.eventId, {
+    this.hub.publishToTeam(progress.eventId, progress.teamId, {
       type: "team_progress",
       eventId: progress.eventId,
       teamId: progress.teamId,

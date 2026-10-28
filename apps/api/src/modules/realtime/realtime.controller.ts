@@ -1,5 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { isStaffRole } from "@dsc-hunt/types";
 import type { EventsRepository } from "../events/events.repository";
+import type { TeamsRepository } from "../teams/teams.repository";
 import type { EventHub } from "./event-hub";
 
 /**
@@ -20,7 +22,8 @@ function allowedOrigin(configured: string, origin: string | undefined): string |
 export class RealtimeController {
   constructor(
     private readonly hub: EventHub,
-    private readonly events: EventsRepository
+    private readonly events: EventsRepository,
+    private readonly teams: TeamsRepository
   ) {
     this.stream = this.stream.bind(this);
   }
@@ -30,6 +33,11 @@ export class RealtimeController {
 
     const event = await this.events.findById(eventId);
     if (!event) return reply.code(404).send({ error: "Event not found" });
+
+    // requireAuth guarantees a user. Their team decides which team-only
+    // messages they get; the teams service keeps it current on join/leave.
+    const user = request.user!;
+    const team = await this.teams.getTeamForUser(user.id, eventId);
 
     // Hijack skips Fastify onSend hooks, so @fastify/cors never writes headers.
     // EventSource is cross-origin from the web app and needs them on the raw response.
@@ -45,7 +53,11 @@ export class RealtimeController {
     reply.raw.setHeader("X-Accel-Buffering", "no");
     reply.raw.flushHeaders();
 
-    this.hub.subscribe(eventId, reply);
+    this.hub.subscribe(eventId, reply, {
+      userId: user.id,
+      teamId: team?.id ?? null,
+      isStaff: isStaffRole(user.role),
+    });
 
     // Snapshot the current status immediately so a client that just
     // (re)connected - e.g. after a dropped wifi connection - self-heals to
