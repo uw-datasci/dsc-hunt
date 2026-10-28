@@ -1,5 +1,6 @@
 import "server-only";
 
+import { RaftResponse } from "@uw-datasci/raft";
 import { NextResponse } from "next/server";
 
 /**
@@ -15,8 +16,9 @@ export async function passThroughRedirect(upstream: Response): Promise<Response>
     if (cacheControl) response.headers.set("Cache-Control", cacheControl);
     return response;
   }
-  return new Response(await upstream.text(), {
-    status: upstream.status,
-    headers: { "Content-Type": upstream.headers.get("content-type") ?? "application/json" },
-  });
+  return RaftResponse.text(
+    await upstream.text(),
+    upstream.headers.get("content-type") ?? "application/json",
+    upstream.status
+  );
 }

@@ -1,7 +1,8 @@
-import { proxyApi } from "@/lib/api/proxy";
+import { withRaft } from "@uw-datasci/raft";
+import { forward } from "@/lib/api/forward";
 
 export const dynamic = "force-dynamic";
 
-export function GET() {
-  return proxyApi("/events/current/riddles");
-}
+export const GET = withRaft(async (request) => {
+  return forward(request, "/events/current/riddles");
+});

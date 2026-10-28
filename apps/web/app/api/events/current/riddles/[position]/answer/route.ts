@@ -1,13 +1,9 @@
-import { proxyApi } from "@/lib/api/proxy";
+import { withRaft } from "@uw-datasci/raft";
+import { forward } from "@/lib/api/forward";
 
-export async function POST(
-  request: Request,
-  context: Readonly<{ params: Promise<{ position: string }> }>
-) {
-  const { position } = await context.params;
-  return proxyApi(`/events/current/riddles/${encodeURIComponent(position)}/answer`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: await request.text(),
-  });
-}
+type Ctx = { params: Promise<{ position: string }> };
+
+export const POST = withRaft<Ctx>(async (request, { params }) => {
+  const { position } = await params;
+  return forward(request, `/events/current/riddles/${encodeURIComponent(position)}/answer`);
+});

@@ -1,9 +1,9 @@
-import { proxyApi } from "@/lib/api/proxy";
+import { withRaft } from "@uw-datasci/raft";
+import { forward } from "@/lib/api/forward";
 
-export async function DELETE(
-  _request: Request,
-  context: Readonly<{ params: Promise<{ id: string }> }>
-) {
-  const { id } = await context.params;
-  return proxyApi(`/teams/${encodeURIComponent(id)}/members/me`, { method: "DELETE" });
-}
+type Ctx = { params: Promise<{ id: string }> };
+
+export const DELETE = withRaft<Ctx>(async (request, { params }) => {
+  const { id } = await params;
+  return forward(request, `/teams/${encodeURIComponent(id)}/members/me`);
+});

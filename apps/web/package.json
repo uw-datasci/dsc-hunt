@@ -17,6 +17,7 @@
     "@neondatabase/serverless": "^1.1.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
+    "@uw-datasci/raft": "^1.0.1",
     "framer-motion": "^14.6.0",
     "lucide-react": "^1.7.0",
     "next": "16.1.6",

@@ -1,14 +1,12 @@
-import { NextResponse } from "next/server";
-import type { AdminRiddle } from "@dsc-hunt/types";
-import { proxyApiJson } from "@/lib/api/proxy";
+import { withRaft } from "@uw-datasci/raft";
+import { forward } from "@/lib/api/forward";
 
 export const dynamic = "force-dynamic";
 
+type Ctx = { params: Promise<{ id: string }> };
+
 /** All 6 riddle positions with answers and QR codes. Staff only (enforced by the API). */
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withRaft<Ctx>(async (request, { params }) => {
   const { id } = await params;
-  const { status, data, error } = await proxyApiJson<{ riddles: AdminRiddle[] }>(
-    `/events/${encodeURIComponent(id)}/admin/riddles`
-  );
-  return NextResponse.json(data ?? { error }, { status });
-}
+  return forward(request, `/events/${encodeURIComponent(id)}/admin/riddles`);
+});

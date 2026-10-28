@@ -1,11 +1,11 @@
-import { proxyApi } from "@/lib/api/proxy";
+import { withRaft } from "@uw-datasci/raft";
+import { forward } from "@/lib/api/forward";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  _request: Request,
-  context: Readonly<{ params: Promise<{ id: string }> }>
-) {
-  const { id } = await context.params;
-  return proxyApi(`/teams/${encodeURIComponent(id)}`);
-}
+type Ctx = { params: Promise<{ id: string }> };
+
+export const GET = withRaft<Ctx>(async (request, { params }) => {
+  const { id } = await params;
+  return forward(request, `/teams/${encodeURIComponent(id)}`);
+});

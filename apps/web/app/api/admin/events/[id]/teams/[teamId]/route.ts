@@ -1,22 +1,19 @@
-import { proxyApi } from "@/lib/api/proxy";
+import { withRaft } from "@uw-datasci/raft";
+import { forward } from "@/lib/api/forward";
 
-type Context = { params: Promise<{ id: string; teamId: string }> };
+type Ctx = { params: Promise<{ id: string; teamId: string }> };
 
-async function teamPath({ params }: Context): Promise<string> {
+async function teamPath({ params }: Ctx): Promise<string> {
   const { id, teamId } = await params;
   return `/events/${encodeURIComponent(id)}/admin/teams/${encodeURIComponent(teamId)}`;
 }
 
 /** Rename a team. Staff only (enforced by the API). */
-export async function PATCH(request: Request, context: Context) {
-  return proxyApi(await teamPath(context), {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: await request.text(),
-  });
-}
+export const PATCH = withRaft<Ctx>(async (request, context) => {
+  return forward(request, await teamPath(context));
+});
 
 /** Delete a team. Staff only, before the start (enforced by the API). */
-export async function DELETE(_request: Request, context: Context) {
-  return proxyApi(await teamPath(context), { method: "DELETE" });
-}
+export const DELETE = withRaft<Ctx>(async (request, context) => {
+  return forward(request, await teamPath(context));
+});

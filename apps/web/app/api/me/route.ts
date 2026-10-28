@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { withRaft, RaftResponse } from "@uw-datasci/raft";
 import { getAuthenticatedUser } from "@/lib/auth/session";
 import { getProfile } from "@/lib/auth/profile";
 import type { MeResponse } from "@dsc-hunt/types";
@@ -7,13 +7,13 @@ import type { MeResponse } from "@dsc-hunt/types";
  * Returns the signed-in user (Supabase auth) and their profile (main site's
  * `profiles` table). 401 when no valid session cookie is present.
  */
-export async function GET() {
+export const GET = withRaft(async () => {
   const user = await getAuthenticatedUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+    return RaftResponse.unauthorized(undefined, "Unauthenticated");
   }
 
   const profile = await getProfile(user.id);
   const response: MeResponse = { user, profile };
-  return NextResponse.json(response);
-}
+  return RaftResponse.ok(response);
+});
